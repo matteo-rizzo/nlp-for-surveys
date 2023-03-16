@@ -10,7 +10,7 @@ class Paper:
         self.ris: Dict = ris
 
         self.metadata: dict = pdf_file.get_metadata_dict()
-        self.raw_text: str = pdf_file[0].get_textpage().get_text_range()
+        # self.raw_text: str = pdf_file[0].get_textpage().get_text_range()
         self.toc = []
         for item in pdf_file.get_toc():
             if item.n_kids == 0:
@@ -41,5 +41,4 @@ class Paper:
             )
 
     def __repr__(self):
-        title = self.reader.get_metadata_value('Title')
-        return f"[{self.id}] {title if title else '(UNDEFINED)'}"
+        return f"[{self.id}] `{self.ris['title']}`"

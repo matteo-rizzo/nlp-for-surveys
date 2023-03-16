@@ -12,8 +12,8 @@ from nltk import word_tokenize
 from sklearn.cluster import MiniBatchKMeans
 from spacy.lang.en import STOP_WORDS
 
-from topic_extraction.BaseTopicExtractor import TopicExtractor
-from topic_extraction.TextRank import TopicRank
+from topic_extraction.classes.BaseTopicExtractor import BaseTopicExtractor
+from topic_extraction.tests.TextRank import BaseTopicRank
 
 
 def dump_yaml(path: str | Path, data: Any) -> None:
@@ -53,14 +53,14 @@ def batch_list(iterable: Sized, batch_size: int = 10) -> Iterable:
         yield iterable[ndx:min(ndx + batch_size, data_len)]
 
 
-class ClusteringMethod(TopicExtractor):
+class ClusteringMethod(BaseTopicExtractor):
     def __init__(self):
         self._model = None
         self._embedding_vectors = None
 
     def __extract_features(self, documents):
         print("*** Start feature extraction ***")
-        algo = TopicRank()
+        algo = BaseTopicRank()
         algo.prepare()
         topics_rank: list[list[tuple[str, float]]] = algo.batch_extract(documents, k=5)
         important_terms: list[list[str]] = [[a[0] for a in l] for l in topics_rank]

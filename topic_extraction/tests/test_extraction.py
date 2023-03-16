@@ -1,6 +1,5 @@
-from topic_extraction import BaseTopicExtractor
-from topic_extraction.ClusExtractor import ClusteringMethod
-from topic_extraction.TextRank import TopicRank
+from topic_extraction.classes import BaseTopicExtractor
+from topic_extraction.tests.ClusExtractor import ClusteringMethod
 from topic_extraction.extract_metadata import text_extraction
 
 
