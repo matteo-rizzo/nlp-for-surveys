@@ -6,9 +6,8 @@ from nltk import word_tokenize
 from spacy import Language
 # from spacy.lang.en import STOP_WORDS
 from spacy.tokens import Span, Doc
-import pytextrank
 
-from topic_extraction.BaseTopicExtractor import TopicExtractor
+from topic_extraction.classes.BaseTopicExtractor import BaseTopicExtractor
 
 
 @spacy.registry.misc("articles_scrubber")
@@ -60,7 +59,7 @@ def custom_cleaning(doc: Doc) -> Doc:
     return new_doc
 
 
-class TopicRank(TopicExtractor):
+class BaseTopicRank(BaseTopicExtractor):
     def __init__(self):
         self._nlp = None
 
