@@ -2,12 +2,12 @@ from typing import List
 
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-from text_summarization.classes.Summarizer import Summarizer
+from text_summarization.classes.SummarizerPipeline import SummarizerPipeline
 
 CHECKPOINT = "sshleifer/distilbart-cnn-12-6"
 
 
-class HuggingFacePipeline(Summarizer):
+class HuggingFaceAbstractive(SummarizerPipeline):
 
     def __init__(self, checkpoint: str = CHECKPOINT):
         super().__init__(tokenizer=AutoTokenizer.from_pretrained(checkpoint))

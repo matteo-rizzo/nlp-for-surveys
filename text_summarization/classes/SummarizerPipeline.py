@@ -5,7 +5,7 @@ import nltk
 from transformers import PreTrainedTokenizerBase
 
 
-class Summarizer:
+class SummarizerPipeline:
     def __init__(self, tokenizer: PreTrainedTokenizerBase):
         self._tokenizer = tokenizer
 

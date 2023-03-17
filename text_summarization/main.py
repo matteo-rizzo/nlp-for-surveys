@@ -5,16 +5,16 @@ from text_summarization.classes.SummarizersFactory import SummarizersFactory
 from text_summarization.functional.settings import PATH_TO_LOG, PATH_TO_DATASET
 
 """
-Supported methods: 'hugging_face', 'gpt3'
+Supported methods: 'hugging_face_abstractive', 'bert_extractive', 'gpt3'
 """
 
-METHOD = "gpt3"
+METHOD = "bert_extractive"
 
 
 def main():
-    print("\n **********************************************")
+    print("\n *********************************************************")
     print(" Text Summarization Using '{}' Pipeline".format(METHOD))
-    print(" ********************************************** \n")
+    print(" ********************************************************* \n")
 
     summarizer = SummarizersFactory().get(METHOD)
 

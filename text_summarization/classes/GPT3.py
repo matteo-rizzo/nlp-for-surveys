@@ -4,11 +4,17 @@ from typing import List
 import openai
 from transformers import AutoTokenizer
 
-from text_summarization.classes.Summarizer import Summarizer
+from text_summarization.classes.SummarizerPipeline import SummarizerPipeline
 from text_summarization.functional.secrets import OPENAI_API_KEY
 
+"""
+In order to use GPT3 you need an API key. You can get this by signing up at platform.openai.com and then navigating to
+platform.openai.com/account/api-keys. When you get the key you need to create a file named secrets.py at functional/.
+This file must contain a global variable named OPENAI_API_KEY set to your personal API key.
+"""
 
-class GPT3(Summarizer):
+
+class GPT3(SummarizerPipeline):
 
     def __init__(self):
         os.environ["TOKENIZERS_PARALLELISM"] = "false"

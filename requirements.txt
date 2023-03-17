@@ -6,3 +6,6 @@ tqdm~=4.65.0
 numpy~=1.24.2
 PyYAML~=6.0
 openai~=0.27.2
+bert-extractive-summarizer
+spacy
+torchvision
