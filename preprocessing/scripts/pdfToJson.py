@@ -68,10 +68,8 @@ def main():
         ris_bibliography: list[dict] = rispy.load(bibliography_file)
 
     paper_paths: list[Path] = [papers_main_folder / str(folders) for folders in os.listdir(papers_main_folder)]
-    # papers: list[Paper] = []
 
     # Go through pdfs
-    # unresolved: list[tuple[PdfDocument, str]] = []
     for p in tqdm(paper_paths, desc="Reading pdf files"):
         # Generate exact path to pdf file
         pdf_file_name: str = str(os.listdir(p)[0])
