@@ -41,7 +41,7 @@ class Paper:
             toc.append((state, item.title))
         return toc
 
-    def to_json(self, containing_folder: Path = Path("data/processed"), original_name: str = ""):
+    def to_json(self, containing_folder: Path = Path("data/processed/success"), original_name: str = ""):
         containing_folder.mkdir(parents=True, exist_ok=True)
 
         data: dict = {

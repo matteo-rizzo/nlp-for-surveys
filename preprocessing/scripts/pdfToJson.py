@@ -43,6 +43,7 @@ def extract_from_name(pdf_file_name: str) -> [str, list]:
 
 def main():
     papers_main_folder: Path = Path("data/papers")
+    out_folder: Path = Path("data/processed")
 
     # Read bibliography file and extract info
     with open("data/TwinTransition_def_Ris.ris", 'r', encoding="UTF-8") as bibliography_file:
@@ -102,12 +103,17 @@ def main():
         # Fail case
         if not paper_ris:
             unresolved.append((pdf_file, pdf_title))
+            failure_folder: Path = out_folder / "failure"
+            failure_folder.mkdir(parents=True, exist_ok=True)
+            pdf_file.save(failure_folder / pdf_file_name)
         else:
             # TODO: check paper correspondence
             paper: Paper = Paper(index=int(p.stem), pdf_file=pdf_file, ris=paper_ris)
-            paper.to_json(original_name=pdf_file_name)
+            paper.to_json(containing_folder= out_folder / "success", original_name=pdf_file_name)
             papers.append(paper)
 
+    with open(out_folder / "updated_ris.ris", 'w', encoding="UTF-8") as bibliography_file:
+        rispy.dump(ris_bibliography, bibliography_file)
     print("Done")
 
 
