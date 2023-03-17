@@ -51,7 +51,7 @@ class Paper:
             "text": self.get_raw_text()
 
         }
-        with open(containing_folder / f"{self.id}", 'w') as f:
+        with open(containing_folder / f"{self.id}.json", 'w') as f:
             json.dump(data, f, indent=2)
 
     def print_toc(self):

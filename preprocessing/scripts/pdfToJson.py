@@ -68,10 +68,10 @@ def main():
         ris_bibliography: list[dict] = rispy.load(bibliography_file)
 
     paper_paths: list[Path] = [papers_main_folder / str(folders) for folders in os.listdir(papers_main_folder)]
-    papers: list[Paper] = []
+    # papers: list[Paper] = []
 
     # Go through pdfs
-    unresolved: list[tuple[PdfDocument, str]] = []
+    # unresolved: list[tuple[PdfDocument, str]] = []
     for p in tqdm(paper_paths, desc="Reading pdf files"):
         # Generate exact path to pdf file
         pdf_file_name: str = str(os.listdir(p)[0])
@@ -91,7 +91,7 @@ def main():
             # Threshold seems decent
             if title_similarity > 0.95:
                 # Likely to be a good match. But there are similar titles!!
-                # Look for the author in the first page
+                # Look for the author in the first pages
                 author_name: str = author_year[0].split(" ")[0]  # Remove stuff like "et al"
                 author_name: str = "".join(filter(lambda char: char in string.printable, author_name))  # Remove garbage
                 # Search for author in first page (match is very likely)
@@ -113,16 +113,15 @@ def main():
         # ----------------------------------------------------------------------------------------------
         # Fail case
         if not paper_ris:
-            unresolved.append((pdf_file, pdf_title))
+            # unresolved.append((pdf_file, pdf_title))
             # text = pdf_file[0].get_textpage().get_text_range()
-            failure_folder: Path = out_folder / "failure"
+            failure_folder: Path = out_folder / "failure" / p.stem
             failure_folder.mkdir(parents=True, exist_ok=True)
             pdf_file.save(failure_folder / pdf_file_name)
         else:
-            # TODO: check paper correspondence
             paper: Paper = Paper(index=int(p.stem), pdf_file=pdf_file, ris=paper_ris)
             paper.to_json(containing_folder=out_folder / "success", original_name=pdf_file_name)
-            papers.append(paper)
+            # papers.append(paper)
 
     with open(out_folder / "updated_ris.ris", 'w', encoding="UTF-8") as bibliography_file:
         rispy.dump(ris_bibliography, bibliography_file)
@@ -131,3 +130,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Failures so far
+# - Corrupted raw text
+# - Weird letters in names 2
+#
