@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import datetime
 from pathlib import Path
+from pprint import pprint
 
+import numpy as np
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance, KeyBERTInspired
 from bertopic.vectorizers import ClassTfidfTransformer
@@ -15,6 +17,7 @@ from umap import UMAP
 from topic_extraction.classes import Document
 from topic_extraction.classes.BaseTopicExtractor import BaseTopicExtractor
 from topic_extraction.utils import load_yaml
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 class BERTopicExtractor(BaseTopicExtractor):
@@ -143,6 +146,51 @@ class BERTopicExtractor(BaseTopicExtractor):
             topics = self._topic_model.reduce_outliers(texts, topics)
 
         return topics, probs, self._topic_model.get_topics()
+
+    def see_topic_evolution(self, documents: list[Document], bins_n: int):
+
+        timestamps: list[int] = [d.timestamp for d in documents]
+
+        # Create bins of timestamps
+        bins = np.linspace(min(timestamps), max(timestamps), bins_n)
+
+        # Assign documents to bins
+        doc_bins = np.digitize(timestamps, bins)
+
+        # Extract text for each bin
+        doc_by_bin: dict[int, list[str]] = {}
+        for doc, idx in zip(documents, doc_bins.tolist()):
+            docs = doc_by_bin.setdefault(idx, list())
+            docs.append(doc.body)
+
+        model_prev = None
+        next_topic: list[list[tuple[int, str]]] | None = None
+        # Clustering
+        for idx, docs in doc_by_bin.items():
+            t_model = BERTopic(embedding_model=self._embedding_model, umap_model=self._reduction_model)
+            t_model.fit(docs)
+
+            if model_prev is None:
+                # initialize topics
+                names = t_model.get_topic_info()["Name"].tolist()[1:]
+                print(names)
+                next_topic = [
+                    [(int(k), names[k])] for k in t_model.get_topics().keys()
+                ]
+            else:
+                sim_matrix = cosine_similarity(model_prev.topic_embeddings_, t_model.topic_embeddings_)
+                for i in range(len(next_topic)):
+                    last_topic_entry: int = next_topic[i][-1][0]
+                    most_similar_topic: int = np.argmax(sim_matrix[last_topic_entry + 1]) - 1
+                    names = t_model.get_topic_info()["Name"].tolist()[1:]
+                    print(names)
+                    print(most_similar_topic)
+                    next_topic[i].append((most_similar_topic, names[most_similar_topic]))
+
+            model_prev = t_model
+
+        # Print topics to file
+        pprint(next_topic)
 
     def plot_wonders(self, documents: list[Document], **kwargs) -> None:
 

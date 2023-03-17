@@ -20,13 +20,15 @@ pd.set_option('display.max_columns', None)
 ex = BERTopicExtractor()
 ex.prepare(config_file="topic_extraction/config/bertopic.yml")
 docs = document_extraction()
-ex.train(docs)
-topics, probs, words_topics = ex.batch_extract(docs, -1, use_training_embeddings=True)
+# ex.train(docs)
+# topics, probs, words_topics = ex.batch_extract(docs, -1, use_training_embeddings=True)
 
 # Plot/save results
-words_topics = {k: [w for w, _ in ws] for k, ws in words_topics.items()}
-dump_yaml(words_topics, Path("plots") / "word_list.yml")
-ex.plot_wonders(docs)
+# words_topics = {k: [w for w, _ in ws] for k, ws in words_topics.items()}
+# dump_yaml(words_topics, Path("plots") / "word_list.yml")
+# ex.plot_wonders(docs)
+
+ex.see_topic_evolution(docs, bins_n=3)
 
 # Step 1 - Extract embeddings
 # embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
