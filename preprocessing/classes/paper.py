@@ -41,10 +41,11 @@ class Paper:
             toc.append((state, item.title))
         return toc
 
-    def to_json(self, containing_folder: Path = Path("data/processed")):
+    def to_json(self, containing_folder: Path = Path("data/processed"), original_name: str = ""):
         containing_folder.mkdir(parents=True, exist_ok=True)
 
         data: dict = {
+            "original_name": original_name,
             "ris": self.ris,
             "toc": self.toc,
             "text": self.get_raw_text()

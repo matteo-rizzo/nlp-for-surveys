@@ -105,7 +105,7 @@ def main():
         else:
             # TODO: check paper correspondence
             paper: Paper = Paper(index=int(p.stem), pdf_file=pdf_file, ris=paper_ris)
-            paper.to_json()
+            paper.to_json(original_name=pdf_file_name)
             papers.append(paper)
 
     print("Done")
