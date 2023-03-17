@@ -4,14 +4,13 @@ from pathlib import Path
 
 import jellyfish
 import rispy
-from pypdfium2 import PdfDocument
+from pypdfium2 import PdfDocument, PdfTextPage
 from tqdm import tqdm
 
 from preprocessing.classes.paper import Paper
 
 
 # This is another nice library, but for now trying pdfium as main library
-from PyPDF2 import PdfReader
 # pypdf_test: PdfReader = PdfReader(path_to_pdf)
 # text_pypdf = pypdf_test.pages[0].extract_text()
 
@@ -54,7 +53,6 @@ def main():
 
     # Go through pdfs
     unresolved: list[tuple[PdfDocument, str]] = []
-    failed_counter: int = 0
     for p in tqdm(paper_paths, desc="Reading pdf files"):
         # Generate exact path to pdf file
         pdf_file_name: str = str(os.listdir(p)[0])
@@ -69,77 +67,48 @@ def main():
         paper_ris = {}
         for idx, ris in enumerate(ris_bibliography):
             ris_title: str = ris["title"]
-            title_similarity = compare_titles(pdf_title, ris_title)
-            sad_flag: bool = False
+            title_similarity: float = compare_titles(pdf_title, ris_title)
+            author_found: bool = False
             # Threshold seems decent
             if title_similarity > 0.95:
                 # Likely to be a good match. But there are similar titles!!
                 # Look for the author in the first page
-                author_name = author_year[0].split(" ")[0]  # Remove stuff like "et al"
-                author_name = "".join(filter(lambda char: char in string.printable, author_name))
-                page = pdf_file.get_page(0).get_textpage()
-                author_index = page.search(author_name).get_next()
+                author_name: str = author_year[0].split(" ")[0]  # Remove stuff like "et al"
+                author_name: str = "".join(filter(lambda char: char in string.printable, author_name))  # Remove garbage
+                # Search for author in first page (match is very likely)
+                page: PdfTextPage = pdf_file.get_page(0).get_textpage()
+                author_index: tuple[int, int] = page.search(author_name).get_next()
+                # Author wasn't found, but there might be typos in the pdf file name. Check the RIS author
                 if author_index is None:
-                    # Check ris author instead
-                    ris_author = ris["authors"][0].split(",")[0]
-                    author_index = page.search(ris_author).get_next()
+                    # Check ris author instead (first author is fine)
+                    ris_author: str = ris["authors"][0].split(",")[0]
+                    author_index: tuple[int, int] = page.search(ris_author).get_next()
+                    # Ris author found
                     if author_index is not None:
-                        sad_flag = True
-                    else:
-                        failed_counter += 1
-                        # PdfDocument(path_to_pdf).get_page(0).get_textpage().get_text_range(0)
-                        # pypdf_test: PdfReader = PdfReader(path_to_pdf)
+                        author_found = True
+                # Author from name was found
                 else:
-                    sad_flag = True
-            if sad_flag:
+                    author_found = True
+            # If author is confirmed
+            if author_found:
                 # Add ris
-                paper_ris = ris
+                paper_ris: dict = ris
                 # Remove found ris
                 ris_bibliography.pop(idx)
                 # Stop searching
                 break
 
         # ----------------------------------------------------------------------------------------------
-        # Search for doi within document, going through each page until found
-        # page_index: int = 0
-        # doi_found: bool = False
-        # while page_index < len(pdf_file) and not doi_found:
-        #     # Search word occurrence - result will be the index of text within document
-        #     doi_index = pdf_file.get_page(page_index).get_textpage().search("doi", match_whole_word=True).get_next()
-        #     # Search within the page, starting from the index found, for the doi
-        #     if doi_index is not None:
-        #         page = pdf_file.get_page(page_index)
-        #         doi = page.get_textpage().get_text_range(doi_index[0])
-        #         regex = r"\b(10[.][0-9]{4,}(?:[.][0-9]+)*/(?:(?![\"&\'])\S)+)\b"
-        #         matches = re.search(regex, doi, re.IGNORECASE)
-        #         # This is still tentative, could be a reference
-        #         if matches is not None:
-        #             doi_found = True
-        #
-        #             discovered_doi = matches.group(0)
-        #             # print(f" - {discovered_doi}")
-        #             metrics["success"] += 1
-        #         # doi regex was not succesful
-        #         else:
-        #             # print(f" ! regex failed for [{pdf_file_name}]")
-        #             metrics["regex_failed"] += 1
-        #             # failures["regex_failed"].append(pdf_file)
-        #     # Increase
-        #     page_index += 1
-        #     if page_index == len(pdf_file) and not doi_found:
-        #         # print(f" ! doi not found for document [{pdf_file_name}]")
-        #         metrics["doi_not_found"] += 1
-        #         failures.append(Paper(index=int(p.stem), pdf_file=pdf_file, ris={}))
-
+        # Fail case
         if not paper_ris:
             unresolved.append((pdf_file, pdf_title))
         else:
+            # TODO: check paper correspondence
             paper: Paper = Paper(index=int(p.stem), pdf_file=pdf_file, ris=paper_ris)
-
+            paper.to_json()
             papers.append(paper)
 
     print("Done")
-    print(f"Failed: {failed_counter}")
 
 
 if __name__ == "__main__":
