@@ -33,9 +33,10 @@ model:
   vectorizer:
     params:
       stop_words: [ "english", "french" ]
-      ngram_range: [ 1, 2 ]
+      ngram_range: !!python/tuple [ 1, 2 ]
       max_df: 0.8
       min_df: 0.2
+      max_features: 30000
 
 
   weighting:

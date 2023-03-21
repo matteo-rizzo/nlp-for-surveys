@@ -9,3 +9,5 @@ openai~=0.27.2
 bert-extractive-summarizer
 spacy
 torchvision
+bertopic
+matplotlib

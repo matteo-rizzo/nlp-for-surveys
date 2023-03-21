@@ -14,7 +14,7 @@ def load_yaml(path: str | Path) -> Any:
     @return: dictionary containing data
     """
     with open(path, encoding="UTF-8") as f:
-        data = yaml.load(f, Loader=yaml.SafeLoader)
+        data = yaml.load(f, Loader=yaml.FullLoader)
     return data
 
 
