@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 from PyPDF2 import PdfReader, PdfWriter
+from tqdm import tqdm
 
 
 def split_pdf(fpath: Path, name: str) -> list[str]:
@@ -13,7 +14,7 @@ def split_pdf(fpath: Path, name: str) -> list[str]:
         for i in range(len(input_pdf.pages)):
             output = PdfWriter()
             output.add_page(input_pdf.pages[i])
-            new_path = os.path.join(fpath.parent / 'tmp', name + f"_p{i}.pdf")
+            new_path = os.path.join(fpath.parent / 'svg', name + f"_p{i}.pdf")
             with open(new_path, "wb") as outputStream:
                 output.write(outputStream)
             pdfs.append(new_path)
@@ -22,32 +23,31 @@ def split_pdf(fpath: Path, name: str) -> list[str]:
 
 
 def pdf_to_svg(file) -> None:
-    args = ['C:/Program Files/Inkscape/bin/inkscape', '--without-gui', '--actions=export-type:svg;export-do',
+    args = ['C:/Program Files/Inkscape/bin/inkscape',
+            '--without-gui',
+            '--actions=export-type:svg;export-do',
             '--export-dpi=300',
             file]
-    subprocess.Popen(args)
+    # Note: saving the return in a variable is necessary for its execution
+    p = subprocess.Popen(args)
+    p.communicate()
+    p.terminate()
 
 
 def main():
-    pdf_path: Path = Path("data/papers/8239/Hindawi - 2009 - 2020 A Publishing Odyssey.pdf")
-    pdfs = split_pdf(pdf_path, pdf_path.stem)
-    for p in pdfs:
-        pdf_to_svg(p)
-    # files = glob.glob('./data/papers/8239/' + '*.pdf', recursive=True)
-    #
-    # pdfs = split_pdf(pdf_path, svg_name, './data/papers/8239/tmp')
-    #
-    # if not os.path.exists(svg_path):
-    #     os.makedirs(svg_path)
-    #
-    # for p in pdfs:
-    #     pdf_to_svg(svg_path, p)
-    #
-    # for file in files:
-    #     args = ['C:/Program Files/Inkscape/bin/inkscape', '--actions=export-type:svg;export-do', '--export-dpi=300',
-    #             file]
-    #     p = subprocess.Popen(args)
+    papers_main_folder: Path = Path("data/papers")
+    paper_paths: list[Path] = [papers_main_folder / str(folders) for folders in os.listdir(papers_main_folder)]
 
+    # Go through pdfs
+    for p in tqdm(paper_paths, desc="Reading pdf files"):
+        pdf_file_name: str = str(os.listdir(p)[0])
+        pdf_path: Path = p / pdf_file_name
+        # pdf_path: Path = Path(p)
+        (pdf_path.parent / "svg").mkdir(exist_ok=True)
+        pdfs = split_pdf(pdf_path, pdf_path.stem)
+        for pages in pdfs:
+            pdf_to_svg(pages)
+            os.remove(pages)
 
 if __name__ == "__main__":
     main()
