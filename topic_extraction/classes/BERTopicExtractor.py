@@ -162,10 +162,10 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         return topics, probs, self._topic_model.get_topics()
 
-    def see_topic_evolution(self, documents: list[Document], bins_n: int):
+    def see_topic_evolution(self, documents: list[Document], bins_n: int, k: int = 1):
 
         g: nx.DiGraph = nx.DiGraph()
-        k = 2
+        k_ = k
 
         # timestamps: list[int] = [d.timestamp for d in documents]
         timestamps: list[int] = list(range(len(documents)))
@@ -175,13 +175,13 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         # Try to select bin edges based on frequency
         n_samples: int = len(timestamps) // bins_n
-        bins = np.sort(timestamps).astype(float)[list(range(0, len(timestamps), n_samples))]
+        bins_time = np.sort(timestamps).astype(float)[list(range(0, len(timestamps), n_samples))]
 
         # Assign documents to bins
-        doc_bins = np.digitize(timestamps, bins)
+        doc_bins = np.digitize(timestamps, bins_time)
 
         # Extract text for each bin
-        doc_by_bin: dict[int, list[str]] = {}
+        doc_by_bin: dict[int, list[str]] = dict()
         for doc, idx in zip(documents, doc_bins.tolist()):
             docs = doc_by_bin.setdefault(idx, list())
             docs.append(doc.body)
@@ -194,6 +194,8 @@ class BERTopicExtractor(BaseTopicExtractor):
             else:
                 doc_by_bin[bin_ - 1].extend(doc_by_bin[bin_])
             del doc_by_bin[bin_]
+
+        bins = [int(min(timestamps))] + [int(bins_time[a]) for a in doc_by_bin.keys()]
 
         all_docs = [d.body for d in documents]
 
@@ -220,6 +222,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         g_prev_topics_ids: list[str] = list()
         # Clustering
         for idx, docs in doc_by_bin.items():
+            bin_name = f"{bins[idx - 1]}-{bins[idx]}"
             # New BERTopic instance
             t_model = BERTopicExtractor.tl_factory(conf)
             embeddings = embedding_model.encode(docs, show_progress_bar=False)
@@ -238,14 +241,14 @@ class BERTopicExtractor(BaseTopicExtractor):
             if n_topics < 3:
                 logging.warning(f"Found {n_topics}. Skipping this bin.")
                 continue
-            if n_topics < k:
+            if n_topics < k_:
                 logging.warning(f"Insufficient number of topics, reducing k to {n_topics}")
-                k = n_topics
+                k_ = n_topics
             df = visualize_topic_space_data(t_model, umap_final)
             assert df["x"].size == df["y"].size == len(t_names), f"Wrong {df['x'].size} {df['y'].size} {len(t_names)}"
 
-            # t_names = df["Words"].tolist()
-            sizes = df["Size"].tolist()
+            t_names = df["Words"].tolist()
+            t_sizes = df["Size"].tolist()
 
             if model_prev is not None:
                 sim_matrix = cosine_similarity(model_prev.topic_embeddings_, t_model.topic_embeddings_)
@@ -259,6 +262,8 @@ class BERTopicExtractor(BaseTopicExtractor):
                     most_similar_topics: list[int] = (np.argpartition(sim_matrix[t_id + 1], -k)[-k:] - 1).tolist()
                     # If -1 (outliers) is found to be similar, remove it
                     most_similar_topics = [s for s in most_similar_topics if s >= 0]
+                    if not most_similar_topics:
+                        continue
 
                     assert len(t_names) > max(
                         most_similar_topics), f"Topics: {most_similar_topics}, names: {len(t_names)}"
@@ -269,7 +274,7 @@ class BERTopicExtractor(BaseTopicExtractor):
                         g_id = f"{idx}_{new_t}"
                         if g_id not in g:
                             g.add_node(g_id, ID=new_t, name=t_names[new_t],
-                                       pos=(df["x"][new_t], df["y"][new_t]), size=sizes[new_t])  # TODO: add topic info
+                                       pos=(df["x"][new_t], df["y"][new_t]), size=t_sizes[new_t], bin=bin_name)
                             new_nodes.append(g_id)
                         # Add weighted edges to represent similarity
                         g.add_edge(prev_t, g_id, w=float(sim_matrix[t_id + 1, new_t]))
@@ -277,7 +282,7 @@ class BERTopicExtractor(BaseTopicExtractor):
                 for i, n in enumerate(t_names):
                     g_id = f"{idx}_{i}"
                     cluster_coords = (df["x"][i], df["y"][i])
-                    g.add_node(g_id, ID=i, name=n, pos=cluster_coords, size=sizes[i])  # TODO: add topic info
+                    g.add_node(g_id, ID=i, name=n, pos=cluster_coords, size=t_sizes[i], bin=bin_name)
                     new_nodes.append(g_id)
 
             model_prev = t_model

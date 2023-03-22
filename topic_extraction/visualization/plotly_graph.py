@@ -1,7 +1,9 @@
+import copy
+from operator import itemgetter
+
+import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from networkx import node_link_graph, node_link_data
-from networkx.readwrite import json_graph
 
 import networkx as nx
 
@@ -32,89 +34,84 @@ def node_trace(x, y, text: str, size: int):
             line_width=2))
 
 
-def plot_network(g: nx.DiGraph) -> go.Figure:
-    # fig = px.scatter(df, x="x", y="y", size="Size", size_max=40, template="simple_white", labels={"x": "", "y": ""},
-    #                  hover_data={"Topic": True, "Words": True, "Size": True, "x": False, "y": False})
-    # fig.update_traces(marker=dict(color="#B0BEC5", line=dict(width=2, color='DarkSlateGrey')))
-    #
-    # # Update hover order
-    # fig.update_traces(hovertemplate="<br>".join(["<b>Topic %{customdata[0]}</b>",
-    #                                              "%{customdata[1]}",
-    #                                              "Size: %{customdata[2]}"]))
+def plot_network(g: nx.DiGraph, title: str = "Topic Evolution Network", width: int = 650, height: int = 650) -> go.Figure:
+    nodes_ = list()
+    for n_id in g.nodes:
+        t_id, t_name, (x, y), t_size, bin_str = itemgetter("ID", "name", "pos", "size", "bin")(g.nodes[n_id])
+        nodes_.append([t_id, t_name, t_size, x, y, bin_str])
+    nodes_df = pd.DataFrame(nodes_, columns=["ID", "name", "size", "x", "y", "bin"])
 
-    edge_x = []
-    edge_y = []
-    w = list()
-    for u, v in g.edges:
-        ux, uy = g.nodes[u]['pos']
-        vx, vy = g.nodes[v]['pos']
+    fig1 = px.scatter(nodes_df, x="x", y="y", size="size", size_max=40, template="simple_white", labels={"x": "", "y": "", "bin": "Timerange"},
+                      hover_data={"ID": True, "name": True, "size": True, "bin": True, "x": False, "y": False}, color="bin")
+    fig1.update_traces(marker=dict(line=dict(width=2, color='DarkSlateGrey')))
+
+    # Update hover order
+    fig1.update_traces(hovertemplate="<br>".join(["<b>Topic %{customdata[0]}</b>",
+                                                  "%{customdata[1]}",
+                                                  "Size: %{customdata[2]}",
+                                                  "Time range: %{customdata[3]}"]))
+
+    bin_edge_data = dict()
+    init_d = dict(edge_x=list(),
+                  edge_y=list(),
+                  edge_w=list())
+    for u, v in g.out_edges:
+        u_node = g.nodes[u]
+        v_node = g.nodes[v]
+        ux, uy = u_node['pos']
+        vx, vy = v_node['pos']
+        bin_node = u_node["bin"]
+        bin_d = bin_edge_data.setdefault(bin_node, copy.deepcopy(init_d))
+        edge_x = bin_d["edge_x"]
+        edge_y = bin_d["edge_y"]
+        edge_w = bin_d["edge_w"]
+
+        sim = g[u][v]["w"]
         edge_x.append(ux)
         edge_x.append(vx)
         edge_x.append(None)
         edge_y.append(uy)
         edge_y.append(vy)
         edge_y.append(None)
-        w.append(w)
+        edge_w.append(sim)
 
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y,
-        line=dict(width=1, color='#888'),
-        hovertext=w,
-        text=w,
-        hoverinfo='text',
-        mode='lines')
+    edge_traces = list()
+    for bin_name, data in bin_edge_data.items():
+        edge_x, edge_y = data["edge_x"], data["edge_y"]
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=1, color='#888'),
+            name=bin_name,
+            mode='lines',
+            legendgroup=bin_name)
 
-    node_x = []
-    node_y = []
-    hover_data = []
-    sizes = []
-    # TODO: assign color by year/bin
-    for node in g.nodes:
-        print(node)
-        x, y = g.nodes[node]['pos']
-        node_x.append(float(x))
-        node_y.append(float(y))
-        s = int(g.nodes[node]['size'])
-        hover_data.append(g.nodes[node]['name'] + f'\nSize: {s}')
-        sizes.append(s)
+        edge_traces.append(edge_trace)
 
-    assert len(hover_data) == len(node_y) == len(node_x), "Wrong lengths in arrays"
+    # fig = go.Figure(data=[*edge_traces, *fig1.data])
 
-    # fig = px.scatter(df, x="x", y="y", size="Size", size_max=40, template="simple_white", labels={"x": "", "y": ""},
-    #                  hover_data={"Topic": True, "Words": True, "Size": True, "x": False, "y": False})
-    # fig.update_traces(marker=dict(color="#B0BEC5", line=dict(width=2, color='DarkSlateGrey')))
+    fig1.add_traces(edge_traces)  # , secondary_ys=[True] * len(edge_traces)
+    # Stylize layout
+    fig1.update_layout(
+        title={
+            'text': f"{title}",
+            'y': .95,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top',
+            'font': dict(
+                size=22,
+                color="Black")
+        },
+        width=width,
+        height=height,
+        hoverlabel=dict(
+            bgcolor="white",
+            font_size=16,
+            font_family="Rockwell"
+        ),
+        xaxis={"visible": False},
+        yaxis={"visible": False},
+        # sliders=sliders
+    )
 
-    # Update hover order
-    # fig.update_traces(hovertemplate="<br>".join(["<b>Topic %{customdata[0]}</b>",
-    #                                              "%{customdata[1]}",
-    #                                              "Size: %{customdata[2]}"]))
-
-    node_ts = [node_trace(x, y, t, s) for x, y, t, s in zip(node_x, node_y, hover_data, sizes)]
-
-    fig = go.Figure(data=[edge_trace, *node_ts],
-                    layout=go.Layout(
-                        title='<br>Network graph made with Python',
-                        titlefont_size=16,
-                        showlegend=False,
-                        hovermode='closest',
-                        margin=dict(b=20, l=5, r=5, t=40),
-                        annotations=[dict(
-                            text="Python code: <a href='https://plotly.com/ipython-notebooks/network-graphs/'> https://plotly.com/ipython-notebooks/network-graphs/</a>",
-                            showarrow=False,
-                            xref="paper", yref="paper",
-                            x=0.005, y=-0.002)],
-                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
-                    )
-
-    # Prepare figure range
-    # print(edge_y)
-    # print(edge_x)
-    # x_range = (min(edge_x) - abs(min(edge_x) * .15), max(edge_x) + abs((max(edge_x)) * .15))
-    # y_range = (min(edge_y) - abs(min(edge_y) * .15), max(edge_y) + abs((max(edge_y)) * .15))
-
-    # Update axes ranges
-    # fig.update_xaxes(range=x_range)
-    # fig.update_yaxes(range=y_range)
-
-    return fig
+    return fig1
