@@ -1,14 +1,6 @@
 from pathlib import Path
 
 import pandas as pd
-from umap import UMAP
-from hdbscan import HDBSCAN
-from sentence_transformers import SentenceTransformer
-from sklearn.feature_extraction.text import CountVectorizer
-
-from bertopic import BERTopic
-from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance
-from bertopic.vectorizers import ClassTfidfTransformer
 
 from topic_extraction.classes.BERTopicExtractor import BERTopicExtractor
 
@@ -20,12 +12,12 @@ pd.set_option('display.max_columns', None)
 ex = BERTopicExtractor()
 ex.prepare(config_file="topic_extraction/config/bertopic.yml")
 docs = document_extraction()
-# ex.train(docs)
-# topics, probs, words_topics = ex.batch_extract(docs, -1, use_training_embeddings=True)
+ex.train(docs)
+topics, probs, words_topics = ex.batch_extract(docs, -1, use_training_embeddings=True)
 
 # Plot/save results
-# words_topics = {k: [w for w, _ in ws] for k, ws in words_topics.items()}
-# ex.plot_wonders(docs)
-# dump_yaml(words_topics, Path("plots") / "word_list.yml")
+words_topics = {k: [w for w, _ in ws] for k, ws in words_topics.items()}
+ex.plot_wonders(docs)
+dump_yaml(words_topics, Path("plots") / "word_list.yml")
 
-ex.see_topic_evolution(docs, bins_n=4)
+ex.see_topic_evolution(docs, bins_n=3)

@@ -9,6 +9,7 @@ from pprint import pprint
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import pandas as pd
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance, KeyBERTInspired
 from bertopic.vectorizers import ClassTfidfTransformer
@@ -162,23 +163,26 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         return topics, probs, self._topic_model.get_topics()
 
-    def see_topic_evolution(self, documents: list[Document], bins_n: int, k: int = 1):
+    def see_topic_evolution(self, documents: list[Document], bins_n: int, k: int = 1, min_samples: int = 80):
 
         g: nx.DiGraph = nx.DiGraph()
         k_ = k
 
-        # timestamps: list[int] = [d.timestamp for d in documents]
-        timestamps: list[int] = list(range(len(documents)))
+        timestamps: list[int] = [d.timestamp for d in documents]
+        # timestamps: list[int] = list(range(len(documents)))
 
         # Create bins of timestamps
-        # bins = np.linspace(min(timestamps), max(timestamps), bins_n + 1)
+        # bins_time = np.linspace(min(timestamps), max(timestamps), bins_n + 1)
 
         # Try to select bin edges based on frequency
-        n_samples: int = len(timestamps) // bins_n
-        bins_time = np.sort(timestamps).astype(float)[list(range(0, len(timestamps), n_samples))]
+        # n_samples: int = len(timestamps) // bins_n
+        # bins_time = np.sort(timestamps).astype(float)[list(range(0, len(timestamps), n_samples))]
+        # Find ~equal-sized bins
+        o, bins_time = pd.qcut(timestamps, bins_n, retbins=True)
 
         # Assign documents to bins
-        doc_bins = np.digitize(timestamps, bins_time)
+        bins_time_ = [bins_time[0] - 0.1, *bins_time[1:-1], bins_time[-1] + 0.1]
+        doc_bins = np.digitize(timestamps, bins_time_, right=True)
 
         # Extract text for each bin
         doc_by_bin: dict[int, list[str]] = dict()
@@ -187,7 +191,7 @@ class BERTopicExtractor(BaseTopicExtractor):
             docs.append(doc.body)
 
         # Merge bins with less than n_samples
-        merge_bins = [idx for idx, docs in doc_by_bin.items() if len(docs) < n_samples]
+        merge_bins = [idx for idx, docs in doc_by_bin.items() if len(docs) < min_samples]
         for bin_ in merge_bins:
             if bin_ + 1 in doc_by_bin:
                 doc_by_bin[bin_ + 1].extend(doc_by_bin[bin_])
@@ -195,7 +199,9 @@ class BERTopicExtractor(BaseTopicExtractor):
                 doc_by_bin[bin_ - 1].extend(doc_by_bin[bin_])
             del doc_by_bin[bin_]
 
-        bins = [int(min(timestamps))] + [int(bins_time[a]) for a in doc_by_bin.keys()]
+        assert 0 not in doc_by_bin, "Bin 0 is present in doc_by_bin. This is unexpected :("
+
+        bins = [int(min(timestamps))] + list(sorted([int(bins_time[a]) for a in doc_by_bin.keys()]))
 
         all_docs = [d.body for d in documents]
 
@@ -221,8 +227,9 @@ class BERTopicExtractor(BaseTopicExtractor):
         model_prev = None
         g_prev_topics_ids: list[str] = list()
         # Clustering
-        for idx, docs in doc_by_bin.items():
-            bin_name = f"{bins[idx - 1]}-{bins[idx]}"
+        for idx, docs in sorted(doc_by_bin.items()):
+            # offset: int = 0 if model_prev is None else 1
+            bin_name = f"( {bins[idx - 1]}-{bins[idx]} ]"
             # New BERTopic instance
             t_model = BERTopicExtractor.tl_factory(conf)
             embeddings = embedding_model.encode(docs, show_progress_bar=False)
@@ -251,7 +258,7 @@ class BERTopicExtractor(BaseTopicExtractor):
             t_sizes = df["Size"].tolist()
 
             if model_prev is not None:
-                sim_matrix = cosine_similarity(model_prev.topic_embeddings_, t_model.topic_embeddings_)
+                sim_matrix = cosine_similarity(model_prev.topic_embeddings_, t_model.topic_embeddings_)[1:, 1:]
                 # print(sim_matrix.shape)  # (n_old_topics, n_new_topics)
 
                 for prev_t in g_prev_topics_ids:
@@ -259,7 +266,7 @@ class BERTopicExtractor(BaseTopicExtractor):
                     t_id: int = g.nodes[prev_t]["ID"]  # topic model ID
 
                     # Compute similarity with new topics (get top-k most similar topics)
-                    most_similar_topics: list[int] = (np.argpartition(sim_matrix[t_id + 1], -k)[-k:] - 1).tolist()
+                    most_similar_topics: list[int] = (np.argpartition(sim_matrix[t_id], -k_)[-k_:]).tolist()
                     # If -1 (outliers) is found to be similar, remove it
                     most_similar_topics = [s for s in most_similar_topics if s >= 0]
                     if not most_similar_topics:
@@ -277,7 +284,7 @@ class BERTopicExtractor(BaseTopicExtractor):
                                        pos=(df["x"][new_t], df["y"][new_t]), size=t_sizes[new_t], bin=bin_name)
                             new_nodes.append(g_id)
                         # Add weighted edges to represent similarity
-                        g.add_edge(prev_t, g_id, w=float(sim_matrix[t_id + 1, new_t]))
+                        g.add_edge(prev_t, g_id, w=float(sim_matrix[t_id, new_t]))
             else:
                 for i, n in enumerate(t_names):
                     g_id = f"{idx}_{i}"
@@ -289,9 +296,9 @@ class BERTopicExtractor(BaseTopicExtractor):
             g_prev_topics_ids = new_nodes
 
         # Plot network
-        # nx.draw(g)
+        # nx.draw_networkx(g)
         # plt.show()
-        fig = plot_network(g)
+        fig = plot_network(g, width=1200, height=1200)
         self._plot_path.mkdir(parents=True, exist_ok=True)
         fig.write_html(self._plot_path / "topic_time_network.html")
 
@@ -319,10 +326,10 @@ class BERTopicExtractor(BaseTopicExtractor):
         # Reduce dimensions for document visualization
         reduced_embeddings = self._reduction_model.transform(emb)
 
-        fig_topics = self._topic_model.visualize_topics()
+        fig_topics = self._topic_model.visualize_topics(width=1200, height=1200)
         fig_topics.write_html(self._plot_path / "topic_space.html")
         fig_doc_topics = self._topic_model.visualize_documents(titles, reduced_embeddings=reduced_embeddings,
-                                                               hide_annotations=True, custom_labels=True)
+                                                               hide_annotations=True, custom_labels=True, width=1800, height=1200)
         fig_doc_topics.write_html(self._plot_path / "document_clusters.html")
 
         topics_over_time = self._topic_model.topics_over_time(texts, years, nr_bins=20, datetime_format="%Y")
