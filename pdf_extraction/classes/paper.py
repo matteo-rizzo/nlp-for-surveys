@@ -14,6 +14,7 @@ class Paper:
         self.metadata: dict = pdf_file.get_metadata_dict()
         # self.raw_text: str = pdf_file[0].get_textpage().get_text_range()
         self.toc = []
+        # This finds TOC if embedded in pdf already.
         for item in pdf_file.get_toc():
             if item.n_kids == 0:
                 state = "*"

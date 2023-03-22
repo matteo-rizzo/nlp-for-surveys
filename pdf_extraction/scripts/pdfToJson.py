@@ -1,3 +1,4 @@
+import glob
 import os
 import string
 from pathlib import Path
@@ -8,7 +9,7 @@ from pypdfium2 import PdfDocument, PdfTextPage
 from tqdm import tqdm
 
 from pdf_extraction.classes.paper import Paper
-import glob
+
 
 # This is another nice library, but for now trying pdfium as main library
 # pypdf_test: PdfReader = PdfReader(path_to_pdf)
