@@ -7,8 +7,8 @@ import rispy
 from pypdfium2 import PdfDocument, PdfTextPage
 from tqdm import tqdm
 
-from preprocessing.classes.paper import Paper
-
+from pdf_extraction.classes.paper import Paper
+import glob
 
 # This is another nice library, but for now trying pdfium as main library
 # pypdf_test: PdfReader = PdfReader(path_to_pdf)
@@ -72,7 +72,7 @@ def main():
     # Go through pdfs
     for p in tqdm(paper_paths, desc="Reading pdf files"):
         # Generate exact path to pdf file
-        pdf_file_name: str = str(os.listdir(p)[0])
+        pdf_file_name: str = Path(glob.glob(f"{p}/*.pdf")[0]).name
         # Get paper name indicated in title
         pdf_title, author_year = extract_from_name(pdf_file_name)
 

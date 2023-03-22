@@ -5,8 +5,8 @@ from pathlib import Path
 import rispy
 from pypdfium2 import PdfDocument
 
-from preprocessing.classes.paper import Paper
-from preprocessing.scripts.pdfToJson import extract_from_name, compare_titles
+from pdf_extraction.classes.paper import Paper
+from pdf_extraction.scripts.pdfToJson import extract_from_name, compare_titles
 
 
 def main():
