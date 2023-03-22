@@ -20,6 +20,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
 from topic_extraction.classes import Document
+from topic_extraction.classes.BERTopicExtended import BERTopicExtended
 from topic_extraction.classes.BaseTopicExtractor import BaseTopicExtractor
 from topic_extraction.utils import load_yaml
 from sklearn.metrics.pairwise import cosine_similarity
@@ -38,7 +39,7 @@ class BERTopicExtractor(BaseTopicExtractor):
 
     def __init__(self):
         self.__train_embeddings = None
-        self._topic_model: BERTopic = None
+        self._topic_model: BERTopicExtended = None
         self._reduction_model = None
         self._config = None
         self._embedding_model = None
@@ -52,7 +53,7 @@ class BERTopicExtractor(BaseTopicExtractor):
 
     @staticmethod
     def tl_factory(tl_args: dict) -> BERTopic:
-        return BERTopic(**tl_args)
+        return BERTopicExtended(**tl_args)
 
     def prepare(self, *args, **kwargs):
         config_path: str | Path = kwargs.get("config_file")
@@ -310,7 +311,7 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         self._plot_path.mkdir(parents=True, exist_ok=True)
 
-        formatted_labels = self._topic_model.generate_topic_labels(nr_words=4, topic_prefix=False, word_length=None,
+        formatted_labels = self._topic_model.generate_topic_labels(nr_words=6, topic_prefix=False, word_length=None,
                                                                    separator=" - ")
         self._topic_model.set_topic_labels(formatted_labels)
 
@@ -334,7 +335,7 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         topics_over_time = self._topic_model.topics_over_time(texts, years, nr_bins=20, datetime_format="%Y")
         fig_time = self._topic_model.visualize_topics_over_time(topics_over_time, top_n_topics=None, custom_labels=True,
-                                                                normalize_frequency=True)
+                                                                normalize_frequency=False, relative_frequency=True, width=1600, height=800)
         fig_time.write_html(self._plot_path / "topic_evolution.html")
 
         fig_hier = self._topic_model.visualize_hierarchy(top_n_topics=None, custom_labels=True)
