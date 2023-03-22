@@ -50,16 +50,18 @@ def visualize_topic_space_data(topic_model, umap_model,
     words = [" | ".join([word[0] for word in topic_model.get_topic(topic)[:5]]) for topic in topic_list]
 
     # Embed c-TF-IDF into 2D
+    # I use sentence embeddings because Tf-IDF is too problematic
     all_topics = sorted(list(topic_model.get_topics().keys()))
     indices = np.array([all_topics.index(topic) for topic in topics])
-    embeddings = topic_model.c_tf_idf_.toarray()[indices]
-    embeddings = MinMaxScaler().fit_transform(embeddings)
+    # embeddings = topic_model.c_tf_idf_.toarray()[indices]
+    embeddings = np.array(topic_model.topic_embeddings_)[indices]
+    # embeddings = MinMaxScaler().fit_transform(embeddings)
     print(embeddings.shape)
-    # if not umap_model.fitted:
-    #     umap_model.fit(embeddings)
-    #     umap_model.fitted = True
-    # embeddings = umap_model.transform(embeddings)
-    embeddings = umap_model.fit_transform(embeddings)
+    if not umap_model.fitted:
+        umap_model.fit(embeddings)
+        umap_model.fitted = True
+    embeddings = umap_model.transform(embeddings)
+    # embeddings = umap_model.fit_transform(embeddings)
 
     # Visualize with plotly
     df = pd.DataFrame({"x": embeddings[:, 0], "y": embeddings[:, 1],

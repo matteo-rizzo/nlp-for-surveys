@@ -195,17 +195,26 @@ class BERTopicExtractor(BaseTopicExtractor):
                 doc_by_bin[bin_ - 1].extend(doc_by_bin[bin_])
             del doc_by_bin[bin_]
 
-        umap_final: UMAP = UMAP(n_neighbors=2, n_components=2, init="random", metric="hellinger", random_state=1561)
-        umap_final.fitted = False
+        all_docs = [d.body for d in documents]
+
+        vec_conf = dict()  # self._config["model"]["vectorizer"]["params"]
+        vectorizer: CountVectorizer = CountVectorizer(**vec_conf).fit(all_docs)
+        vocab = vectorizer.get_feature_names_out()
+        vectorizer = CountVectorizer(**vec_conf, vocabulary=vocab)
 
         embedding_model = SentenceTransformer(self._config["model"]["sentence_transformer"])
+        all_embeddings = embedding_model.encode(all_docs, show_progress_bar=False)
+
+        umap_final: UMAP = UMAP(n_neighbors=2, n_components=2, init="random", metric="cosine", random_state=1561)
+        umap_final.fit(all_embeddings)
+        umap_final.fitted = True
+
         umap_model = UMAP(**self._config["model"]["dimensionality_reduction"]["params"]["umap"])
-        ctfidf_model = ClassTfidfTransformer(**self._config["model"]["weighting"]["params"])
 
         conf = copy.deepcopy(self._instantiation_kwargs)
         conf["umap_model"] = umap_model
-        conf["embedding_model"] = embedding_model
-        conf["ctfidf_model"] = ctfidf_model
+        # conf["embedding_model"] = embedding_model
+        conf["vectorizer_model"] = vectorizer
 
         model_prev = None
         g_prev_topics_ids: list[str] = list()
@@ -213,10 +222,10 @@ class BERTopicExtractor(BaseTopicExtractor):
         for idx, docs in doc_by_bin.items():
             # New BERTopic instance
             t_model = BERTopicExtractor.tl_factory(conf)
-            # embeddings = self._embedding_model.encode(docs)
+            embeddings = embedding_model.encode(docs, show_progress_bar=False)
 
-            # t_model.fit(docs, embeddings=embeddings)
-            t_model.fit(docs)
+            t_model = t_model.fit(docs, embeddings=embeddings)
+            # t_model.fit(docs)
 
             print("**** NEW BIN ****")
             new_nodes = list()
@@ -239,9 +248,6 @@ class BERTopicExtractor(BaseTopicExtractor):
             sizes = df["Size"].tolist()
 
             if model_prev is not None:
-                # print(t_model.get_topic_info()["Name"].tolist())
-                # print(len(model_prev.topic_embeddings_))
-                # print(names)  # (n_new_topics, )
                 sim_matrix = cosine_similarity(model_prev.topic_embeddings_, t_model.topic_embeddings_)
                 # print(sim_matrix.shape)  # (n_old_topics, n_new_topics)
 
@@ -278,33 +284,11 @@ class BERTopicExtractor(BaseTopicExtractor):
             g_prev_topics_ids = new_nodes
 
         # Plot network
-        nx.draw(g)
-        plt.show()
+        # nx.draw(g)
+        # plt.show()
         fig = plot_network(g)
         self._plot_path.mkdir(parents=True, exist_ok=True)
         fig.write_html(self._plot_path / "topic_time_network.html")
-
-        # if model_prev is None:
-        #     # initialize topics
-        #     names = t_model.get_topic_info()["Name"].tolist()[1:]
-        #     print(names)
-        #     next_topic = [
-        #         [(int(k), names[k])] for k in t_model.get_topics().keys()
-        #     ]
-        # else:
-        #     sim_matrix = cosine_similarity(model_prev.topic_embeddings_, t_model.topic_embeddings_)
-        #     for i in range(len(next_topic)):
-        #         last_topic_entry: int = next_topic[i][-1][0]
-        #         most_similar_topic: int = np.argmax(sim_matrix[last_topic_entry + 1]) - 1
-        #         names = t_model.get_topic_info()["Name"].tolist()[1:]
-        #         print(names)
-        #         print(most_similar_topic)
-        #         next_topic[i].append((most_similar_topic, names[most_similar_topic]))
-        #
-        # model_prev = t_model
-
-        # Print topics to file
-        # pprint(next_topic)
 
     def plot_wonders(self, documents: list[Document], **kwargs) -> None:
 
