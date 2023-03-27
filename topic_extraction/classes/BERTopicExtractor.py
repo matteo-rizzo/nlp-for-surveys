@@ -5,7 +5,7 @@ import datetime
 import logging
 from pathlib import Path
 from pprint import pprint
-
+from topictuner import TopicModelTuner as TMT
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -120,6 +120,24 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         self._reduce_outliers = run_config["reduce_outliers"]
 
+    def tuning(self, documents: list[Document]):
+        texts = [d.body for d in documents]
+
+        print("*** Tuning BERTopic ***")
+
+        tmt = TMT(verbose=0)
+
+        tmt.createEmbeddings(texts)  # Run embedding model
+        tmt.reduce()  # Run UMAP
+        # lastRunResultsDF = tmt.randomSearch([*range(10, 200)], [.1, .25, .5, .75, 1], iters=50)
+
+        lastRunResultsDF = tmt.gridSearch([*range(35, 41)])  # [x / 100 for x in range(10, 101, 10)]
+        summaryDF = tmt.summarizeResults(lastRunResultsDF).sort_values(by=["number_uncategorized"])
+        # tmt.visualizeSearch(lastRunResultsDF).show()
+        tmt.visualizeSearch(lastRunResultsDF).show()
+        summaryDF.to_csv("tuning3.csv")
+        print(lastRunResultsDF)
+
     def train(self, documents: list[Document], *args, **kwargs) -> None:
         texts = [d.body for d in documents]
 
@@ -158,9 +176,12 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         topics, probs = self._topic_model.transform(texts, embeddings=emb)
 
+        print(f"Outliers: {len([t for t in topics if t < 0])}")
+
         if self._reduce_outliers:
             print("*** Reducing outliers ***")
             topics = self._topic_model.reduce_outliers(texts, topics)
+            print(f"Outliers post-reduction: {len([t for t in topics if t < 0])}")
 
         return topics, probs, self._topic_model.get_topics()
 

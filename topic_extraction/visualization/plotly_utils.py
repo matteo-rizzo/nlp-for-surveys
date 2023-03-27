@@ -99,7 +99,7 @@ def visualize_topics_over_time_ext(topic_model,
     fig.update_xaxes(showgrid=True)
     fig.update_yaxes(showgrid=True)
     fig.update_layout(
-        yaxis_title="Normalized Frequency" if normalize_frequency else "Frequency",
+        yaxis_title="Normalized Frequency" if normalize_frequency else "Relative Frequency" if relative_frequency else "Frequency",
         title={
             'text': f"{title}",
             'y': .95,
