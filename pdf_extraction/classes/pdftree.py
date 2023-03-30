@@ -2,8 +2,7 @@ import json
 from pathlib import Path
 from typing import Union
 
-from pdf_extraction.classes.svgtree import SVGTree
-from pdf_extraction.scripts.svg_parser import read_svg_files
+from pdfminer.high_level import extract_text
 
 
 class PDFTree:
@@ -17,12 +16,12 @@ class PDFTree:
         self.id: str = paper_id
 
         # Pathing
-        svg_folder: Path = self.root_folder / paper_id / "svg"
+        # svg_folder: Path = self.root_folder / paper_id / "svg"
         json_folder: Path = self.processed_folder / "success"
 
         # Add information gathered from svg file
-        self.svg_tree: SVGTree = read_svg_files(svg_folder)
-        self.svg_tree.merge_text_nodes()
+        # self.svg_tree: SVGTree = read_svg_files(svg_folder)
+        # self.svg_tree.merge_text_nodes()
 
         # Add information gathered from pdf miners
         json_path = json_folder / f"{paper_id}.json"
@@ -31,8 +30,3 @@ class PDFTree:
                 self.json_info: dict = json.load(bf)
         else:
             self.json_info: dict = {"Error": "Unavailable pdf parsing"}
-
-
-if __name__ == "__main__":
-    tree = PDFTree(8239)
-    print("")
