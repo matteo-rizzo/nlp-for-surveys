@@ -79,10 +79,14 @@ def is_page(block):
     return bool(re.match(r'(page \d+ of \d+)', block.strip().lower()))
 
 
+def is_of(block):
+    return bool(re.match(r'(\d+ of \d+)', block.strip().lower()))
+
+
 def check_condictions(block):
     return has_copyright_chars(block) or is_just_number(block) \
         or has_doi(block) or has_url(block) or has_email(block) or is_alternation(block) or is_figure(block) \
-        or is_page(block) or is_number_alternation(block)
+        or is_page(block) or is_number_alternation(block) or is_of(block)
 
 
 def find_references(strings_list):
