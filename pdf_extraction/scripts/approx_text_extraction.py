@@ -80,7 +80,7 @@ def has_url(block: str) -> bool:
 def is_alternation(block: str) -> bool:
     # For when blocks are messy evenly spaced characters
     # e.g. i n t r o d u c t i o n
-    return bool(re.match(r'^([\w,.!?*)(\-:<>+&/] )*[\w,.!?*)(\-:<>+&/]$', block.strip()))
+    return bool(re.match(r'^([\w,.!?*)(\-:<>+&/–;] )*[\w,.!?*)(\-:<>+&/–;]$', block.strip()))
 
 
 def is_number_alternation(block: str) -> bool:
@@ -104,11 +104,18 @@ def is_of(block: str) -> bool:
     return bool(re.match(r'(\d+ of \d+)', block.strip().lower()))
 
 
+def has_no_chars(block: str) -> bool:
+    pattern = r'^[\d\W]+$'
+    match = re.match(pattern, block)
+    return bool(match)
+
+
 def check_condictions(block: str) -> bool:
     # A very unoptimized conditional case, but it's fast so it doesn't matter
     return has_copyright_chars(block) or is_just_number(block) \
-        or has_doi(block) or has_url(block) or has_email(block) or is_alternation(block) or is_figure(block) \
-        or is_page(block) or is_number_alternation(block) or is_of(block)
+        or has_doi(block) or has_url(block) or block.isupper() or \
+        has_email(block) or is_alternation(block) or is_figure(block) \
+        or is_page(block) or is_number_alternation(block) or has_no_chars(block) or is_of(block) or block == "" or len(block) <= 2
 
 
 def find_references(strings_list: list[str]) -> Optional[int]:
@@ -138,10 +145,22 @@ def clean_block(block: str) -> str:
     """
     # spurious (cid:d+) encodings (not read properly)
     clean: str = re.sub(r'\(cid:\d+\)', '', block)
+    # Uninformative common words
+    words = ["Fig", "Fig.", "Figure", "Table", "Tab", "Tab."]
+    clean = re.sub(r'\b(?:{})\b'.format('|'.join(map(re.escape, words))), '', clean, flags=re.IGNORECASE)
     # Weird characters, tabs, newpages
-    clean: str = re.sub(r'[\t\r\f●…•]', '', clean)
+    clean: str = re.sub(r'[\t\r\f●…✓•→]', '', clean)
     # 3 or more "_"
     clean: str = re.sub(r"_{3,}", "", clean)
+    # Dates
+    clean: str = re.sub(r"\b\d{2}/\d{2}/\d{2}\b", "", clean)
+    # References / bracketed numbers
+    clean: str = re.sub(r"\[\s*(\d+(?:[ -–]\d+)?)\s*(?:,\s*(\d+(?:[ -–]\d+)?\s*(?:,\s*\d+(?:[ -–]\d+)?)*))?\s*]", "",
+                        clean)
+    # Sample number
+    clean: str = re.sub(r"(N\s*=\s*\d+)", "", clean)
+    # Empty brackets
+    clean: str = re.sub(r'[\[\]()]', "", clean)
     # Special spaces
     clean: str = re.sub(r"[\u00A0\u2002]", " ", clean)
     # Excessive spaces
@@ -179,7 +198,8 @@ def clean_text() -> None:
         seen = []
         to_remove: set[int] = set()
         for index, block in enumerate(block_text):
-            if block in seen:
+            # Keep references
+            if block in seen and block.lower() != "references":
                 to_remove.add(index)
                 to_remove.add(seen.index(block))
             seen.append(block)
@@ -201,5 +221,5 @@ def clean_text() -> None:
 
 
 if __name__ == "__main__":
-    abstract_and_text_to_json()
-    # clean_text()
+    # abstract_and_text_to_json()
+    clean_text()
