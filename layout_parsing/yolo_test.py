@@ -11,7 +11,7 @@ def main():
     # model.train(data='coco128.yaml', epochs=100, imgsz=640)
 
     # Predict with the model
-    results = model('https://ultralytics.com/images/bus.jpg', save=True)  # predict on an image
+    results = model('C:/Users/matte/Desktop/WhatsApp Image 2023-04-06 at 13.55.13.jpg', save=True)  # predict on an image
 
 
 if __name__ == "__main__":
