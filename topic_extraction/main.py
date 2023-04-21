@@ -14,12 +14,12 @@ docs = document_extraction()
 # Pass 1
 
 seed_topic_list = [
-    ["circular economy", "sustainability", "sustainable business", "sustainable development", "recycling", "eco"],
-    ["digitalization", "digital business", "digital economy", "digital innovation", "transformation business"]
+    ["circular economy", "sustainability", "sustainable business", "sustainable development", "recycling", "waste"],
+    ["digitalization", "digital business", "digital economy", "digital innovation", "business transformation"]
 ]
 
 ex = BERTopicExtractor()
-ex.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=None)
+ex.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=seed_topic_list)
 
 # ex.tuning(docs)
 
