@@ -1,0 +1,60 @@
+run:
+  reduce_outliers: false
+
+model:
+  bertopic:
+    min_topic_size: 80
+    language: "multilingual"
+    top_n_words: 10
+    nr_topics: "auto"
+
+  sentence_transformer: "all-MiniLM-L6-v2"
+  # sentence_transformer: "paraphrase-multilingual-MiniLM-L12-v2"
+
+  dimensionality_reduction:
+    choice: "umap"
+    params:
+      umap:
+        n_neighbors: 80
+        n_components: 15 # the higher, the more "spiky"
+        min_dist: 0.0
+        metric: 'cosine'
+        low_memory: false
+        random_state: 654565
+
+  clustering:
+    choice: "kmeans" # hdbscan
+    params:
+      hdbscan:
+        min_cluster_size: 10
+        min_samples: 10
+        metric: 'euclidean'
+        cluster_selection_method: 'eom'
+        prediction_data: true
+      kmeans:
+        n_clusters: 3
+
+  vectorizer:
+    params:
+      stop_words: "english"
+      ngram_range: !!python/tuple [ 1, 2 ]
+      max_df: 0.9 # TF upper cap
+      min_df: 0.2
+      max_features: 40000
+
+
+  weighting:
+    params:
+      bm25_weighting: true
+      reduce_frequent_words: true
+
+
+  representation:
+    choice: "mmr" # "keybert"
+    params:
+      keybert:
+        random_state: 412763287
+      mmr:
+        diversity: 0.2
+
+

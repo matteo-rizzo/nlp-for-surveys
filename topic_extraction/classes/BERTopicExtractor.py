@@ -5,6 +5,8 @@ import datetime
 import logging
 from pathlib import Path
 from pprint import pprint
+
+from sklearn.cluster import KMeans
 from topictuner import TopicModelTuner as TMT
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -56,7 +58,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         return BERTopicExtended(**tl_args)
 
     def prepare(self, *args, **kwargs):
-        config_path: str | Path = kwargs.get("config_file")
+        config_path: str | Path = kwargs.pop("config_file")
         self._config = load_yaml(config_path)
 
         run_config = self._config["run"]
@@ -81,6 +83,8 @@ class BERTopicExtractor(BaseTopicExtractor):
         model_cl = None
         if conf["choice"] == "hdbscan":
             model_cl = HDBSCAN(**conf["params"][conf["choice"]])
+        elif conf["choice"] == "kmeans":
+            model_cl = KMeans(**conf["params"][conf["choice"]])
         self._clustering_model = model_cl
         # is UMAP.n_components is increased may want to change metric in HDBSCAN
 
@@ -114,7 +118,8 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         self._instantiation_kwargs = {
             **tl_args,
-            **model_config["bertopic"]
+            **model_config["bertopic"],
+            **kwargs
         }
         self._topic_model = BERTopicExtractor.tl_factory(self._instantiation_kwargs)
 
@@ -152,6 +157,8 @@ class BERTopicExtractor(BaseTopicExtractor):
         # Topic modelling
         # topics, probs = \
         self._topic_model.fit(texts, embeddings=embeddings)
+        # Further reduce topics
+        # self._topic_model.reduce_topics(texts, nr_topics=3)
 
     def extract(self, document: Document, k: int, *args, **kwargs) -> list:
         pass
