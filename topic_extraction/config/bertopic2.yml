@@ -8,7 +8,7 @@ model:
     top_n_words: 10
     nr_topics: auto
 
-  sentence_transformer: allenai-specter # all-MiniLM-L6-v2
+  sentence_transformer: allenai-specter # allenai-specter # all-MiniLM-L6-v2
   # sentence_transformer: "paraphrase-multilingual-MiniLM-L12-v2"
 
   dimensionality_reduction:

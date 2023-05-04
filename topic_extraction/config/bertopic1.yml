@@ -8,7 +8,7 @@ model:
     top_n_words: 10
     nr_topics: auto
 
-  sentence_transformer: all-MiniLM-L6-v2
+  sentence_transformer: all-MiniLM-L6-v2 # allenai-specter
   # sentence_transformer: "paraphrase-multilingual-MiniLM-L12-v2"
 
   dimensionality_reduction:
@@ -32,7 +32,7 @@ model:
         cluster_selection_method: eom
         prediction_data: true
       kmeans:
-        n_clusters: 3
+        n_clusters: 2
 
   vectorizer:
     params:

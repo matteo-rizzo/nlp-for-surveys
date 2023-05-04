@@ -7,8 +7,6 @@ import plotly.express as px
 
 import networkx as nx
 
-def plot_document_topic_vs_themes():
-    pass
 
 def node_trace(x, y, text: str, size: int):
     return go.Scatter(

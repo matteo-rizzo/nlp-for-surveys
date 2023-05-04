@@ -29,6 +29,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from topic_extraction.visualization.plotly_graph import plot_network
 from topic_extraction.visualization.utils import visualize_topic_space_data
+from topic_extraction.visualization.visualize_stacked_topics import visualize_stacked_topics
 
 
 class BERTopicExtractor(BaseTopicExtractor):
@@ -374,4 +375,9 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         fig_hier = self._topic_model.visualize_hierarchy(top_n_topics=None, custom_labels=True)
         fig_hier.write_html(self._plot_path / "topic_hierarchy.html")
-        return fig_doc_topics
+
+        if kwargs.get("add_doc_classes", None):
+            l2_topics = kwargs["add_doc_classes"]
+            fig = visualize_stacked_topics(self._topic_model, titles, reduced_embeddings=reduced_embeddings, hide_annotations=True, custom_labels=True, width=1800, height=1200,
+                                           stacked_topics=l2_topics, stacked_symbols=[(0, "circle"), (1, "x")])
+            fig.write_html(self._plot_path / "topic_stacked.html")
