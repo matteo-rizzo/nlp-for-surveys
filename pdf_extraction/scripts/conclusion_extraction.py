@@ -12,8 +12,14 @@ def extract_conclusions(data: dict) -> Optional[str]:
     for i in range(len(full_text) - 1, -1, -1):
         if "conclusion" in full_text[i].lower():
             extracted_conclusion: str = " ".join(full_text[i:])
-            # TODO: check length
             return extracted_conclusion
+        elif "results" in full_text[i].lower():
+            extracted_conclusion: str = " ".join(full_text[i:])
+            return extracted_conclusion
+        # elif "conclusions" in full_text[i].lower():
+        #     extracted_conclusion: str = " ".join(full_text[i:])
+        #     # TODO: check length
+        #     return extracted_conclusion
     return ""
 
 
@@ -23,6 +29,7 @@ def main():
     out.mkdir(exist_ok=True)
     paper_paths: list[Path] = [Path(f"{prefix}/{x}/clean_content.json") for x in os.listdir(prefix)]
     skipped: int = 0
+    counter = 0
     for content in tqdm(paper_paths, desc="Adding conclusions"):
         if not content.exists():
             skipped += 1
@@ -43,10 +50,14 @@ def main():
         #             state = "+"
         #         toc.append((state, item.title))
         # data["toc"] = toc
-        data["conclusions"] = extract_conclusions(data)
+        text = extract_conclusions(data)
+        if not text:
+            counter += 1
+        data["conclusions"] = text
         with open(out / f"{content.parent.name}.json", "w", encoding="UTF-8") as f:
             ujson.dump(data, f, indent=2)
     print(f"Skipped {skipped} files (could not extract text).")
+    print(f"Not found {counter}.")
 
 
 if __name__ == "__main__":
