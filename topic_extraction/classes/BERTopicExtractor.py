@@ -39,7 +39,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         self._topic_model = BERTopic.load(path, *args, **kwargs)
         # TODO: assign components
 
-    def __init__(self):
+    def __init__(self, plot_path: Path | str = Path("plots")):
         self.__train_embeddings = None
         self._topic_model: BERTopicExtended = None
         self._reduction_model = None
@@ -50,7 +50,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         self._weighting_model = None
         self._representation_model = None
         self._reduce_outliers: bool = False
-        self._plot_path: Path = Path("plots")
+        self._plot_path: Path = plot_path
         self._instantiation_kwargs = None
 
     @staticmethod
@@ -70,23 +70,26 @@ class BERTopicExtractor(BaseTopicExtractor):
         self._embedding_model = SentenceTransformer(model_config["sentence_transformer"])
 
         # Step 2 - Reduce dimensionality
-        conf = model_config["dimensionality_reduction"]
-        model_rd = None
-        if conf["choice"] == "umap":
-            model_rd = UMAP(**conf["params"][conf["choice"]])
-        elif conf["choice"] == "pca":
-            model_rd = PCA(**conf["params"][conf["choice"]])
+        model_rd = kwargs.pop("dimensionality_reduction", None)
+        if not model_rd:
+            conf = model_config["dimensionality_reduction"]
+            if conf["choice"] == "umap":
+                model_rd = UMAP(**conf["params"][conf["choice"]])
+            elif conf["choice"] == "pca":
+                model_rd = PCA(**conf["params"][conf["choice"]])
         self._reduction_model = model_rd
 
         # Step 3 - Cluster reduced embeddings
-        conf = model_config["clustering"]
-        model_cl = None
-        if conf["choice"] == "hdbscan":
-            model_cl = HDBSCAN(**conf["params"][conf["choice"]])
-        elif conf["choice"] == "kmeans":
-            model_cl = KMeans(**conf["params"][conf["choice"]])
+        model_cl = kwargs.pop("clustering", None)
+        if not model_cl:
+            conf = model_config["clustering"]
+            model_cl = None
+            if conf["choice"] == "hdbscan":
+                model_cl = HDBSCAN(**conf["params"][conf["choice"]])
+            elif conf["choice"] == "kmeans":
+                model_cl = KMeans(**conf["params"][conf["choice"]])
         self._clustering_model = model_cl
-        # is UMAP.n_components is increased may want to change metric in HDBSCAN
+        # if UMAP.n_components is increased may want to change metric in HDBSCAN
 
         # Step 4 - Tokenize topics
         self._vectorizer_model = CountVectorizer(**model_config["vectorizer"]["params"])
@@ -150,6 +153,9 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         # Precompute embeddings
         embeddings = self._embedding_model.encode(texts, show_progress_bar=False)
+        if kwargs.get("normalize", False):
+            # NOTE: only works when batch_extract use the training embeddings
+            embeddings /= np.linalg.norm(embeddings, axis=1).reshape(-1, 1)
         self.__train_embeddings = embeddings
 
         print("*** Fitting the model ***")
@@ -344,7 +350,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         self._topic_model.set_topic_labels(formatted_labels)
 
         texts = [d.body for d in documents]
-        titles = [d.title for d in documents]
+        titles = [f"{d.id} - {d.title}" for d in documents]
         years: list[str] = [str(d.timestamp) for d in documents]
 
         # If documents are passed then those are embedded using the selected emb_model (else training emb are used)
@@ -368,3 +374,4 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         fig_hier = self._topic_model.visualize_hierarchy(top_n_topics=None, custom_labels=True)
         fig_hier.write_html(self._plot_path / "topic_hierarchy.html")
+        return fig_doc_topics

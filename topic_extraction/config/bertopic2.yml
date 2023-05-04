@@ -3,41 +3,46 @@ run:
 
 model:
   bertopic:
-    min_topic_size: 15
-    language: "multilingual"
+    min_topic_size: 10
+    language: english
     top_n_words: 10
+    nr_topics: auto
 
-  sentence_transformer: "all-MiniLM-L6-v2"
+  sentence_transformer: allenai-specter # all-MiniLM-L6-v2
   # sentence_transformer: "paraphrase-multilingual-MiniLM-L12-v2"
 
   dimensionality_reduction:
-    choice: "umap"
+    choice: umap
     params:
       umap:
         n_neighbors: 20
-        n_components: 5
+        n_components: 10
         min_dist: 0.0
-        metric: 'cosine'
+        metric: cosine
         low_memory: false
         random_state: 654565
 
   clustering:
-    choice: "hdbscan"
+    choice: hdbscan
     params:
       hdbscan:
-        min_cluster_size: 24
-        min_samples: 24
-        metric: 'euclidean'
-        cluster_selection_method: 'eom'
-        prediction_data: true
+        min_cluster_size: 10
+        #        max_cluster_size: 15
+        min_samples: 10
+        metric: euclidean
+        #        algorithm: generic # comment to use default "best" one
+        cluster_selection_method: leaf # eom
+        prediction_data: true # do not change this
+      kmeans:
+        n_clusters: 3
 
   vectorizer:
     params:
-      stop_words: "english"
+      stop_words: english
       ngram_range: !!python/tuple [ 1, 2 ]
-      max_df: 0.9 # TF upper cap
+      max_df: 0.8 # TF upper cap
       min_df: 0.2
-      max_features: 40000
+      max_features: 10000
 
 
   weighting:
@@ -47,7 +52,7 @@ model:
 
 
   representation:
-    choice: "mmr" # "keybert"
+    choice: mmr # keybert
     params:
       keybert:
         random_state: 412763287
