@@ -11,3 +11,5 @@ spacy
 torchvision
 bertopic
 matplotlib
+plotly
+scikit-learn
