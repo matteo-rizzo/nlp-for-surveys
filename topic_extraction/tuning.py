@@ -6,7 +6,7 @@ from topic_extraction.classes.BERTopicExtractor import BERTopicExtractor
 from topic_extraction.extraction import document_extraction
 
 # K-MEANS best (specter): 15
-# HDBSCAN best (specter): 'min_samples': 10, 'min_cluster_size': 20, 'metric': 'euclidean', 'cluster_selection_method': 'leaf'
+# HDBSCAN best (specter): 'min_samples': 3, 'min_cluster_size': 15, 'metric': 'euclidean', 'cluster_selection_method': 'eom'
 
 docs = document_extraction()
 

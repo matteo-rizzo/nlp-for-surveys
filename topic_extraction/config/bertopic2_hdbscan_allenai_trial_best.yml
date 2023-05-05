@@ -26,15 +26,15 @@ model:
     choice: hdbscan
     params:
       hdbscan:
-        min_cluster_size: 3
+        min_cluster_size: 10
         #        max_cluster_size: 15
-        min_samples: 15
+        min_samples: 10
         metric: euclidean
         #        algorithm: generic # comment to use default "best" one
-        cluster_selection_method: eom # leaf # eom
+        cluster_selection_method: leaf # eom
         prediction_data: true # do not change this
       kmeans:
-        n_clusters: 20
+        n_clusters: 3
 
   vectorizer:
     params:
