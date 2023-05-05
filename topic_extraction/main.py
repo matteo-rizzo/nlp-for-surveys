@@ -32,7 +32,7 @@ ex1.train(docs)
 # ex._topic_model.merge_topics([d.body for d in docs], topics_to_merge=[1, 2])
 l1_topics, probs, words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
 torch.cuda.empty_cache()
-del ex1
+# del ex1
 
 # Plot/save results
 # ex1.plot_wonders(docs)
@@ -47,7 +47,7 @@ dump_yaml(words_topics, pl_path1 / "word_list.yml")
 pl_path2 = Path("plots") / "fields"
 ex2 = BERTopicExtractor(plot_path=pl_path2)
 ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
-ex2.train(docs, normalize=True)
+ex2.train(docs, normalize=True, embeddings=ex1._train_embeddings)
 topics, probs, words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True)
 ex2.plot_wonders(docs, add_doc_classes=l1_topics)
 

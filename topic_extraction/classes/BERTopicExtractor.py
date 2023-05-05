@@ -83,7 +83,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         # TODO: assign components
 
     def __init__(self, plot_path: Path | str = Path("plots")):
-        self.__train_embeddings = None
+        self._train_embeddings = None
         self._topic_model: BERTopicExtended = None
         self._reduction_model = None
         self._config = None
@@ -256,12 +256,15 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         print("*** Generating embeddings ***")
 
-        # Precompute embeddings
-        embeddings = self._embedding_model.encode(texts, show_progress_bar=False)
-        if kwargs.get("normalize", False):
-            # NOTE: only works when batch_extract use the training embeddings
-            embeddings /= np.linalg.norm(embeddings, axis=1).reshape(-1, 1)
-        self.__train_embeddings = embeddings
+        embeddings = kwargs.get("embeddings", None)
+
+        if embeddings is None:
+            # Precompute embeddings
+            embeddings = self._embedding_model.encode(texts, show_progress_bar=False)
+            if kwargs.get("normalize", False):
+                # NOTE: only works when batch_extract use the training embeddings
+                embeddings /= np.linalg.norm(embeddings, axis=1).reshape(-1, 1)
+        self._train_embeddings = embeddings
 
         print("*** Fitting the model ***")
 
@@ -290,7 +293,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         emb_train: bool = kwargs.get("use_training_embeddings", False)
         texts = [d.body for d in documents]
 
-        emb = self.__train_embeddings if emb_train else None
+        emb = self._train_embeddings if emb_train else None
 
         topics, probs = self._topic_model.transform(texts, embeddings=emb)
 
@@ -459,7 +462,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         years: list[str] = [str(d.timestamp) for d in documents]
 
         # If documents are passed then those are embedded using the selected emb_model (else training emb are used)
-        emb = self.__train_embeddings
+        emb = self._train_embeddings
         if not emb_train:
             emb = self._embedding_model.encode(texts, show_progress_bar=False)
 
