@@ -111,6 +111,10 @@ class BERTopicExtractor(BaseTopicExtractor):
         if kwargs.get("normalize", False):
             embeddings /= np.linalg.norm(embeddings, axis=1).reshape(-1, 1)
 
+        result_path = "hdbscan_grid_results"
+        if kwargs.get("result_path", False):
+            result_path = kwargs["result_path"]
+
         umap_embeddings = self._topic_model._reduce_dimensionality(embeddings)
 
         # 2. Select best hyperparameters
@@ -156,7 +160,7 @@ class BERTopicExtractor(BaseTopicExtractor):
             dfr = pd.DataFrame.from_records(results).sort_values(by="score", ascending=False)
 
             self._plot_path.mkdir(exist_ok=True, parents=True)
-            dfr.to_csv(self._plot_path / "hdbscan_grid_results.csv")
+            dfr.to_csv(self._plot_path / f"{result_path}.csv")
 
             optimal_n_clusters = dfr["n_clusters"][0]
 
@@ -445,7 +449,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         self._plot_path.mkdir(parents=True, exist_ok=True)
         fig.write_html(self._plot_path / "topic_time_network.html")
 
-    def plot_wonders(self, documents: list[Document], **kwargs) -> None:
+    def plot_wonders(self, documents: list[Document], **kwargs) -> pd.DataFrame:
 
         print("*** Plotting results ***")
 
@@ -488,3 +492,4 @@ class BERTopicExtractor(BaseTopicExtractor):
             fig = visualize_stacked_topics(self._topic_model, titles, reduced_embeddings=reduced_embeddings, hide_annotations=True, custom_labels=True, width=1800, height=1200,
                                            stacked_topics=l2_topics, stacked_symbols=[(0, "circle"), (1, "x")])
             fig.write_html(self._plot_path / "topic_stacked.html")
+        return topics_over_time

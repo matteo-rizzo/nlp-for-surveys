@@ -51,7 +51,7 @@ ex2 = BERTopicExtractor(plot_path=pl_path2)
 ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
 ex2.train(docs, normalize=True, embeddings=ex1._train_embeddings)
 l2_topics, probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True)
-# ex2.plot_wonders(docs, add_doc_classes=l1_topics)
+# topic_over_time = ex2.plot_wonders(docs, add_doc_classes=l1_topics)
 
 l2_words = {k: [w for w, _ in ws] for k, ws in l2_words_topics.items()}
 dump_yaml(l2_words, pl_path2 / "word_list.yml")
