@@ -7,6 +7,7 @@ model:
     language: english
     top_n_words: 10
     nr_topics: auto
+    calculate_probabilities: true
 
   sentence_transformer: allenai-specter # allenai-specter # all-MiniLM-L6-v2
   # sentence_transformer: "paraphrase-multilingual-MiniLM-L12-v2"

@@ -25,6 +25,7 @@ seed_topic_list = [
 
 # --------------------- PASS 1
 pl_path1 = Path("plots") / "themes"
+pl_path1.mkdir(exist_ok=True, parents=True)
 ex1 = BERTopicExtractor(plot_path=pl_path1)
 ex1.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=seed_topic_list)
 ex1.train(docs)
@@ -47,17 +48,20 @@ dump_yaml(l1_words, pl_path1 / "word_list.yml")
 # Determine field of application
 
 pl_path2 = Path("plots") / "fields"
+pl_path2.mkdir(exist_ok=True, parents=True)
 ex2 = BERTopicExtractor(plot_path=pl_path2)
 ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
 ex2.train(docs, normalize=True, embeddings=ex1._train_embeddings)
 l2_topics, probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True)
 # topic_over_time = ex2.plot_wonders(docs, add_doc_classes=l1_topics)
+l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics)
 
 l2_words = {k: [w for w, _ in ws] for k, ws in l2_words_topics.items()}
 dump_yaml(l2_words, pl_path2 / "word_list.yml")
 
 # --------------------- END PASS 2
 
-save_csv_results(docs, themes=l1_topics, theme_keywords=l1_words, subjects=l2_topics, subj_keywords=l2_words, path=pl_path1.parent / "results")
+save_csv_results(docs, themes=l1_topics, theme_keywords=l1_words, subjects=l2_topics, alt_subjects=l2_topics_all,
+                 subj_keywords=l2_words, path=pl_path1.parent / "results")
 
 # ex.see_topic_evolution(docs, bins_n=3)

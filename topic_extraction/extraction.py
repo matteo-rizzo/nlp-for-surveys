@@ -45,6 +45,8 @@ def document_extraction() -> list[Document]:
     df = pd.read_csv("data/TwinTransitionEstrazione7mar2023.csv", usecols=["Title", "Abstract", "Year", "Author Keywords", "EID"])
     df["all"] = df["Title"].str.cat(df["Abstract"], sep=". ")
 
+    # TODO: add extraction of missing Scopus IDs from URLs
+
     keywords: list[list[str]] = [[c.strip() for c in s.split(";")] for s in df["Author Keywords"].fillna("").tolist()]
     years: list[int] = [y for y in df["Year"].astype(int).tolist()]
     ids: list[str] = [extract_scopus_id(s) for s in df["EID"].fillna("").tolist()]

@@ -33,11 +33,16 @@ def dump_yaml(data, path: str | Path) -> None:
         yaml.dump(data, f, Dumper=yaml.SafeDumper)
 
 
-def save_csv_results(docs: list[Document], themes: list[int], subjects: list[int], theme_keywords: dict[list[str]], subj_keywords: dict[list[str]], path: str | Path) -> None:
+def save_csv_results(docs: list[Document], themes: list[int], subjects: list[int], alt_subjects: list[int], theme_keywords: dict[list[str]], subj_keywords: dict[list[str]], path: str | Path) -> None:
     """
-    Data
+    Save clustering results to CSV file
 
-    :param data:
+    :param docs: documents
+    :param themes: 1st level of labels
+    :param subjects: 2nd level of labels
+    :param alt_subjects: 2nd level of labels fixed
+    :param theme_keywords: keywords associated with 1st level topics
+    :param subj_keywords: keywords associated with 2nd level topics
     :param path:
     :return:
     """
@@ -49,4 +54,5 @@ def save_csv_results(docs: list[Document], themes: list[int], subjects: list[int
     tk = pd.DataFrame(theme_keywords).to_csv(path / "themes.csv")
     sk = pd.DataFrame(subj_keywords).to_csv(path / "subjects.csv")
 
-    classification_df = pd.DataFrame(dict(themes=themes, subjects=subjects), index=ids).to_csv(path / "classification.csv")
+    classification_df = pd.DataFrame(dict(themes=themes, subjects=subjects, alt_subjects=alt_subjects), index=ids)
+    classification_df.to_csv(path / "classification.csv")
