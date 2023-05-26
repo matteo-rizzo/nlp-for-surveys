@@ -41,15 +41,30 @@ def extract_scopus_id(eid: str) -> str:
     return s
 
 
-def document_extraction() -> list[Document]:
-    df = pd.read_csv("data/TwinTransitionEstrazione7mar2023.csv", usecols=["Title", "Abstract", "Year", "Author Keywords", "EID"])
-    df["all"] = df["Title"].str.cat(df["Abstract"], sep=". ")
+def extract_scopus_id_from_link(df: pd.DataFrame) -> list[str | None]:
+    values = df.to_records(index=False).tolist()
+    sids: list[str | None] = list()
+    for eid, link in values:
+        sid = re.findall("^2-s2.0-(\\d+)$", eid)
+        if sid:
+            sids.append(sid[0])
+        else:
+            sid = re.findall("eid=2-s2.0-(\\d+)", link)
+            if sid:
+                sids.append(sid[0])
+            else:
+                sids.append(None)
+    return sids
 
-    # TODO: add extraction of missing Scopus IDs from URLs
+
+def document_extraction() -> list[Document]:
+    df = pd.read_csv("data/TwinTransitionEstrazione7mar2023.csv", usecols=["Title", "Abstract", "Year", "Author Keywords", "EID", "Link"])
+    df["all"] = df["Title"].str.cat(df["Abstract"], sep=". ")
 
     keywords: list[list[str]] = [[c.strip() for c in s.split(";")] for s in df["Author Keywords"].fillna("").tolist()]
     years: list[int] = [y for y in df["Year"].astype(int).tolist()]
-    ids: list[str] = [extract_scopus_id(s) for s in df["EID"].fillna("").tolist()]
+    ids: list[str] = extract_scopus_id_from_link(df[["EID", "Link"]].fillna(""))  # [extract_scopus_id(s) for s in df[["EID", "Link"]].fillna("").tolist()]
+    assert None not in ids, "There were None values in Scopus ids"
     docs = [Document(i, b, t, k, y) for i, b, t, y, k in zip(ids, df["all"].tolist(), df["Title"].tolist(), years, keywords)]
     return docs
 

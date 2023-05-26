@@ -13,8 +13,8 @@ docs = document_extraction()
 pl_path1 = Path("plots") / "validation"
 ex1 = BERTopicExtractor(plot_path=pl_path1)
 ex1.prepare(config_file="topic_extraction/config/bertopic2.yml")
-ex1.find_optimal_n_clusters(docs, conf_search="topic_extraction/config/model_selection.yml", normalize=True, result_path="hdbscan_grid_results_norm")
-ex1.find_optimal_n_clusters(docs, conf_search="topic_extraction/config/model_selection.yml", normalize=False, result_path="hdbscan_grid_results")
+ex1.find_optimal_n_clusters(docs, conf_search="topic_extraction/config/model_selection.yml", normalize=False, result_path="mpnet_hdbscan_grid_results")
 
 torch.cuda.empty_cache()
-del ex1
+
+ex1.find_optimal_n_clusters(docs, conf_search="topic_extraction/config/model_selection.yml", normalize=True, result_path="mpnet_hdbscan_grid_results_norm")

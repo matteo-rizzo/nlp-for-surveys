@@ -7,3 +7,5 @@ clustering:
     min_cluster_size: [ 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130 ]
     cluster_selection_method: [ eom, leaf ]
     metric: [ euclidean, manhattan, infinity ]
+    cluster_selection_epsilon: [ 0.0, 0.5 ]
+    # alpha: [ 1.0, 1.2 ]
