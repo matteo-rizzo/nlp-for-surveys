@@ -9,7 +9,7 @@ model:
     nr_topics: auto
     calculate_probabilities: true
 
-  sentence_transformer: allenai-specter # allenai-specter # all-MiniLM-L6-v2
+  sentence_transformer: allenai-specter # all-mpnet-base-v2 # allenai-specter # all-MiniLM-L6-v2
   # sentence_transformer: "paraphrase-multilingual-MiniLM-L12-v2"
 
   dimensionality_reduction:
@@ -34,6 +34,7 @@ model:
         #        algorithm: generic # comment to use default "best" one
         cluster_selection_method: eom # leaf # eom
         prediction_data: true # do not change this
+        gen_min_span_tree: true
       kmeans:
         n_clusters: 20
 

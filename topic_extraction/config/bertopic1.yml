@@ -8,7 +8,7 @@ model:
     top_n_words: 10
     nr_topics: auto
 
-  sentence_transformer: all-MiniLM-L6-v2 # allenai-specter
+  sentence_transformer: allenai-specter # all-mpnet-base-v2 # all-MiniLM-L6-v2 # allenai-specter
   # sentence_transformer: "paraphrase-multilingual-MiniLM-L12-v2"
 
   dimensionality_reduction:
@@ -16,7 +16,7 @@ model:
     params:
       umap:
         n_neighbors: 80
-        n_components: 5 # the higher, the more "spiky"
+        n_components: 10 # the higher, the more "spiky"
         min_dist: 0.0
         metric: cosine
         low_memory: false
