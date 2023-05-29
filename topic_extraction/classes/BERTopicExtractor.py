@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import copy
 import itertools
 import logging
+import os
 from pathlib import Path
 from typing import Callable, Generic, TypeVar, Iterable
 
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 import pandas as pd
+import torch
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance, KeyBERTInspired
 from bertopic.vectorizers import ClassTfidfTransformer
@@ -19,7 +19,6 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import silhouette_score
-from sklearn.metrics.pairwise import cosine_similarity
 from topictuner import TopicModelTuner as TMT
 from umap import UMAP
 
@@ -27,11 +26,11 @@ from topic_extraction.classes import Document
 from topic_extraction.classes.BERTopicExtended import BERTopicExtended
 from topic_extraction.classes.BaseTopicExtractor import BaseTopicExtractor
 from topic_extraction.utils import load_yaml
-from topic_extraction.visualization.plotly_graph import plot_network
-from topic_extraction.visualization.utils import visualize_topic_space_data
 from topic_extraction.visualization.visualize_stacked_topics import visualize_stacked_topics
 
 T = TypeVar("T")
+
+logger = logging.getLogger(__name__)
 
 
 def grid_search(estimator_class: T, grid_params: dict, metric_fun: Callable[[Generic[T]], float], large_is_better: bool,
@@ -237,6 +236,9 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         self._reduce_outliers = run_config["reduce_outliers"]
 
+        self._embedding_save_path = f'dumps/embeddings/{model_config["sentence_transformer"]}.npy'
+        Path(self._embedding_save_path).parent.mkdir(exist_ok=True, parents=True)
+
     def tuning(self, documents: list[Document]):
         texts = [d.body for d in documents]
 
@@ -261,6 +263,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         print("*** Generating embeddings ***")
 
         embeddings = kwargs.get("embeddings", None)
+        fit_reduction = kwargs.get("fit_reduction", True)
 
         if embeddings is None:
             # Precompute embeddings
@@ -268,13 +271,16 @@ class BERTopicExtractor(BaseTopicExtractor):
             if kwargs.get("normalize", False):
                 # NOTE: only works when batch_extract use the training embeddings
                 embeddings /= np.linalg.norm(embeddings, axis=1).reshape(-1, 1)
+
+            np.save(self._embedding_save_path, embeddings)
+
         self._train_embeddings = embeddings
 
         print("*** Fitting the model ***")
 
         # Topic modelling
         # topics, probs = \
-        self._topic_model.fit(texts, embeddings=embeddings)
+        self._topic_model.fit(texts, embeddings=embeddings, fit_reduction=fit_reduction)
         # Further reduce topics
         # self._topic_model.reduce_topics(texts, nr_topics=3)
 
@@ -297,6 +303,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         emb_train: bool = kwargs.get("use_training_embeddings", False)
         texts = [d.body for d in documents]
 
+        # Use pre-trained /reduced embeddings. If reduced embeddings are used the 'emb' are ignored
         emb = self._train_embeddings if emb_train else None
 
         topics, probs = self._topic_model.transform(texts, embeddings=emb)
@@ -309,145 +316,6 @@ class BERTopicExtractor(BaseTopicExtractor):
             print(f"Outliers post-reduction: {len([t for t in topics if t < 0])}")
 
         return topics, probs, self._topic_model.get_topics()
-
-    def see_topic_evolution(self, documents: list[Document], bins_n: int, k: int = 1, min_samples: int = 80):
-
-        g: nx.DiGraph = nx.DiGraph()
-        k_ = k
-
-        timestamps: list[int] = [d.timestamp for d in documents]
-        # timestamps: list[int] = list(range(len(documents)))
-
-        # Create bins of timestamps
-        # bins_time = np.linspace(min(timestamps), max(timestamps), bins_n + 1)
-
-        # Try to select bin edges based on frequency
-        # n_samples: int = len(timestamps) // bins_n
-        # bins_time = np.sort(timestamps).astype(float)[list(range(0, len(timestamps), n_samples))]
-        # Find ~equal-sized bins
-        o, bins_time = pd.qcut(timestamps, bins_n, retbins=True)
-
-        # Assign documents to bins
-        bins_time_ = [bins_time[0] - 0.1, *bins_time[1:-1], bins_time[-1] + 0.1]
-        doc_bins = np.digitize(timestamps, bins_time_, right=True)
-
-        # Extract text for each bin
-        doc_by_bin: dict[int, list[str]] = dict()
-        for doc, idx in zip(documents, doc_bins.tolist()):
-            docs = doc_by_bin.setdefault(idx, list())
-            docs.append(doc.body)
-
-        # Merge bins with less than n_samples
-        merge_bins = [idx for idx, docs in doc_by_bin.items() if len(docs) < min_samples]
-        for bin_ in merge_bins:
-            if bin_ + 1 in doc_by_bin:
-                doc_by_bin[bin_ + 1].extend(doc_by_bin[bin_])
-            else:
-                doc_by_bin[bin_ - 1].extend(doc_by_bin[bin_])
-            del doc_by_bin[bin_]
-
-        assert 0 not in doc_by_bin, "Bin 0 is present in doc_by_bin. This is unexpected :("
-
-        bins = [int(min(timestamps))] + list(sorted([int(bins_time[a]) for a in doc_by_bin.keys()]))
-
-        all_docs = [d.body for d in documents]
-
-        vec_conf = dict()  # self._config["model"]["vectorizer"]["params"]
-        vectorizer: CountVectorizer = CountVectorizer(**vec_conf).fit(all_docs)
-        vocab = vectorizer.get_feature_names_out()
-        vectorizer = CountVectorizer(**vec_conf, vocabulary=vocab)
-
-        embedding_model = SentenceTransformer(self._config["model"]["sentence_transformer"])
-        all_embeddings = embedding_model.encode(all_docs, show_progress_bar=False)
-
-        umap_final: UMAP = UMAP(n_neighbors=2, n_components=2, init="random", metric="cosine", random_state=1561)
-        umap_final.fit(all_embeddings)
-        umap_final.fitted = True
-
-        umap_model = UMAP(**self._config["model"]["dimensionality_reduction"]["params"]["umap"])
-
-        conf = copy.deepcopy(self._instantiation_kwargs)
-        conf["umap_model"] = umap_model
-        # conf["embedding_model"] = embedding_model
-        conf["vectorizer_model"] = vectorizer
-
-        model_prev = None
-        g_prev_topics_ids: list[str] = list()
-        # Clustering
-        for idx, docs in sorted(doc_by_bin.items()):
-            # offset: int = 0 if model_prev is None else 1
-            bin_name = f"( {bins[idx - 1]}-{bins[idx]} ]"
-            # New BERTopic instance
-            t_model = BERTopicExtractor.tl_factory(conf)
-            embeddings = embedding_model.encode(docs, show_progress_bar=False)
-
-            t_model = t_model.fit(docs, embeddings=embeddings)
-            # t_model.fit(docs)
-
-            print("**** NEW BIN ****")
-            new_nodes = list()
-
-            # names: list[str] = t_model.get_topic_info()["Name"].tolist()[1:]
-            t_names: list[str] = \
-                t_model.generate_topic_labels(nr_words=4, topic_prefix=True, word_length=None, separator=" - ")[1:]
-
-            n_topics = len(t_names)
-            if n_topics < 3:
-                logging.warning(f"Found {n_topics}. Skipping this bin.")
-                continue
-            if n_topics < k_:
-                logging.warning(f"Insufficient number of topics, reducing k to {n_topics}")
-                k_ = n_topics
-            df = visualize_topic_space_data(t_model, umap_final)
-            assert df["x"].size == df["y"].size == len(t_names), f"Wrong {df['x'].size} {df['y'].size} {len(t_names)}"
-
-            t_names = df["Words"].tolist()
-            t_sizes = df["Size"].tolist()
-
-            if model_prev is not None:
-                sim_matrix = cosine_similarity(model_prev.topic_embeddings_, t_model.topic_embeddings_)[1:, 1:]
-                # print(sim_matrix.shape)  # (n_old_topics, n_new_topics)
-
-                for prev_t in g_prev_topics_ids:
-                    # Get topic model ID for each previous topic
-                    t_id: int = g.nodes[prev_t]["ID"]  # topic model ID
-
-                    # Compute similarity with new topics (get top-k most similar topics)
-                    most_similar_topics: list[int] = (np.argpartition(sim_matrix[t_id], -k_)[-k_:]).tolist()
-                    # If -1 (outliers) is found to be similar, remove it
-                    most_similar_topics = [s for s in most_similar_topics if s >= 0]
-                    if not most_similar_topics:
-                        continue
-
-                    assert len(t_names) > max(
-                        most_similar_topics), f"Topics: {most_similar_topics}, names: {len(t_names)}"
-                    # assert min(most_similar_topics) >= 0, f"-1 is a similar topic"
-
-                    # Add new nodes with new topic information
-                    for new_t in most_similar_topics:
-                        g_id = f"{idx}_{new_t}"
-                        if g_id not in g:
-                            g.add_node(g_id, ID=new_t, name=t_names[new_t],
-                                       pos=(df["x"][new_t], df["y"][new_t]), size=t_sizes[new_t], bin=bin_name)
-                            new_nodes.append(g_id)
-                        # Add weighted edges to represent similarity
-                        g.add_edge(prev_t, g_id, w=float(sim_matrix[t_id, new_t]))
-            else:
-                for i, n in enumerate(t_names):
-                    g_id = f"{idx}_{i}"
-                    cluster_coords = (df["x"][i], df["y"][i])
-                    g.add_node(g_id, ID=i, name=n, pos=cluster_coords, size=t_sizes[i], bin=bin_name)
-                    new_nodes.append(g_id)
-
-            model_prev = t_model
-            g_prev_topics_ids = new_nodes
-
-        # Plot network
-        # nx.draw_networkx(g)
-        # plt.show()
-        fig = plot_network(g, width=1200, height=1200)
-        self._plot_path.mkdir(parents=True, exist_ok=True)
-        fig.write_html(self._plot_path / "topic_time_network.html")
 
     def plot_wonders(self, documents: list[Document], **kwargs) -> pd.DataFrame:
 
@@ -479,13 +347,13 @@ class BERTopicExtractor(BaseTopicExtractor):
                                                                hide_annotations=True, custom_labels=True, width=1800, height=1200)
         fig_doc_topics.write_html(self._plot_path / "document_clusters.html")
 
-        topics_over_time = self._topic_model.topics_over_time(texts, years, nr_bins=20, datetime_format="%Y")
-        fig_time = self._topic_model.visualize_topics_over_time(topics_over_time, top_n_topics=None, custom_labels=True,
-                                                                normalize_frequency=False, relative_frequency=True, width=1600, height=800)
-        fig_time.write_html(self._plot_path / "topic_evolution.html")
+        # topics_over_time = self._topic_model.topics_over_time(texts, years, nr_bins=20, datetime_format="%Y")
+        # fig_time = self._topic_model.visualize_topics_over_time(topics_over_time, top_n_topics=None, custom_labels=True,
+        #                                                         normalize_frequency=False, relative_frequency=True, width=1600, height=800)
+        # fig_time.write_html(self._plot_path / "topic_evolution.html")
 
-        fig_hier = self._topic_model.visualize_hierarchy(top_n_topics=None, custom_labels=True)
-        fig_hier.write_html(self._plot_path / "topic_hierarchy.html")
+        # fig_hier = self._topic_model.visualize_hierarchy(top_n_topics=None, custom_labels=True)
+        # fig_hier.write_html(self._plot_path / "topic_hierarchy.html")
 
         # topics_per_class = self._topic_model.topics_per_class(texts, classes=GROUND_TRUTH)
         # fig_class = self._topic_model.visualize_topics_per_class(custom_labels=True)
@@ -496,4 +364,3 @@ class BERTopicExtractor(BaseTopicExtractor):
             fig = visualize_stacked_topics(self._topic_model, titles, reduced_embeddings=reduced_embeddings, hide_annotations=True, custom_labels=True, width=1800, height=1200,
                                            stacked_topics=l2_topics, stacked_symbols=[(0, "circle"), (1, "x")])
             fig.write_html(self._plot_path / "topic_stacked.html")
-        return topics_over_time
