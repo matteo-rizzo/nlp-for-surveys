@@ -19,26 +19,22 @@ docs = document_extraction()
 #     ["digitalization", "digital business", "digital economy", "digital innovation", "business transformation"]
 # ]
 
-seed_topic_list1 = [
-    ["green", "sustainability", "environment", "green transition", "green transform", "sustainable transformation", "sustainable business"],
-    ["digitalization", "digital", "digital transition", "digital transformation", "e-business", "digital business", "automation"],
+seed_topic_list = [
+    ["green", "sustainability", "environment", "transition", "transform", "business"],
+    ["digitalization", "digital", "transition", "transform", "business"],
 ]
 
 # --------------------- PASS 1
 pl_path1 = Path("plots") / "themes"
 pl_path1.mkdir(exist_ok=True, parents=True)
 ex1 = BERTopicExtractor(plot_path=pl_path1)
-ex1.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=seed_topic_list1)
+ex1.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=seed_topic_list)
+ex1.train(docs)
 
-embeddings = None
-if Path(ex1._embedding_save_path).is_file():
-    embeddings = np.load(ex1._embedding_save_path)
-
-ex1.train(docs, embeddings=embeddings, normalize=False)
-
+# ex._topic_model.merge_topics([d.body for d in docs], topics_to_merge=[1, 2])
 l1_topics, probs, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
 torch.cuda.empty_cache()
-del ex1
+# del ex1
 
 # Plot/save results
 # ex1.plot_wonders(docs)
@@ -56,28 +52,22 @@ pl_path2 = Path("plots") / "fields"
 pl_path2.mkdir(exist_ok=True, parents=True)
 ex2 = BERTopicExtractor(plot_path=pl_path2)
 ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
-
-if Path(ex2._embedding_save_path).is_file():
-    embeddings = np.load(ex2._embedding_save_path)
-
-ex2.train(docs, normalize=True, embeddings=embeddings)
+ex2.train(docs, normalize=True, embeddings=ex1._train_embeddings)
 print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
 l2_topics, probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True)
-ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
+topic_over_time = ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
 l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics)
 
 l2_words = {k: [w for w, _ in ws] for k, ws in l2_words_topics.items()}
 dump_yaml(l2_words, pl_path2 / "word_list.yml")
 
-torch.cuda.empty_cache()
 # --------------------- END PASS 2
-
 
 # --------------------- PASS 3
 
-seed_topic_list2 = [
-    ["agrifood", "agri-sector", "agro-sector", "agronomy", "nutrition", "ecological", "cultivation", "farm", "agriculture", "crops", "aquaculture", "agroecology", "crop growing",
-     "livestock", "food", "viticulture", "wine", "beer", "farmland", "harvest", "agri-food industry", "sharecropping", "agroindustry", "agroforestry",
+seed_topic_list = [
+    ["agrifood", "agri", "agronomy", "nutrition", "ecological", "cultivation", "farm", "agriculture", "crops", "aquaculture", "agroecology", "crop growing",
+     "livestock", "food", "viticulture", "wine", "beer", "bier", "farmland", "harvest", "agri-food industry", "sharecropping", "agroindustry", "agroforestry",
      "agro-tourism", "hydroponics", "farmwork", "husbandry", "horticulture", "fish", "agriculture technology",
      "sustainability-driven nutrient roadmap", "nutritious crops", "nutrient recovery", "climate-smart fertilizers", "digital crop nutrition",
      "seed systems", "climate adaptation", "farmer", "agri-food system", "agri-food ecosystem", "agri-food firm",
@@ -90,7 +80,7 @@ seed_topic_list2 = [
 pl_path3 = Path("plots") / "agrifood"
 pl_path3.mkdir(exist_ok=True, parents=True)
 ex3 = BERTopicExtractor(plot_path=pl_path3)
-ex3.prepare(config_file="topic_extraction/config/bertopic3.yml", seed_topic_list=seed_topic_list2)  # dimensionality_reduction=ex2._reduction_model
+ex3.prepare(config_file="topic_extraction/config/bertopic3.yml", seed_topic_list=seed_topic_list)  # dimensionality_reduction=ex2._reduction_model
 del ex2._embedding_model
 torch.cuda.empty_cache()
 
@@ -109,12 +99,7 @@ agrifood_k_cluster = int(input("Enter the cluster number: "))
 ex2._plot_path = pl_path3
 ex2.plot_wonders(docs, add_doc_classes=[(1 if t == agrifood_k_cluster else 0) for t in l3_topics], use_training_embeddings=True)
 
-fig_topics = ex3._topic_model.visualize_topics(width=1200, height=1200)
-fig_topics.write_html(ex3._plot_path / "topic_space.html")
-
 # --------------------- END PASS 3
 
-# save_csv_results(docs, themes=l1_topics, theme_keywords=l1_words, subjects=l2_topics, alt_subjects=l2_topics_all,
-#                  subj_keywords=l2_words, path=pl_path1.parent / "results")
-
-# ex.see_topic_evolution(docs, bins_n=3)
+save_csv_results(docs, themes=l1_topics, theme_keywords=l1_words, subjects=l2_topics, alt_subjects=l2_topics_all,
+                 subj_keywords=l2_words, path=pl_path1.parent / "results")

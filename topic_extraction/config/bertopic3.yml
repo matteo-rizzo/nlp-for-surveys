@@ -7,7 +7,7 @@ model:
     language: english
     top_n_words: 10
 
-  sentence_transformer: all-mpnet-base-v2 # allenai-specter # all-mpnet-base-v2
+  sentence_transformer: allenai-specter # allenai-specter # all-mpnet-base-v2
 
   dimensionality_reduction:
     choice: umap
@@ -15,7 +15,7 @@ model:
       umap:
         n_neighbors: 15
         n_components: 10
-        min_dist: 0.1
+        min_dist: 0.0
         metric: cosine
         low_memory: false
         random_state: 654565
