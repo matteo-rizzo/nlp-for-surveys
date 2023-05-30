@@ -303,7 +303,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         emb_train: bool = kwargs.get("use_training_embeddings", False)
         texts = [d.body for d in documents]
 
-        # Use pre-trained /reduced embeddings. If reduced embeddings are used the 'emb' are ignored
+        # Use pre-trained /reduced embeddings.
         emb = self._train_embeddings if emb_train else None
 
         topics, probs = self._topic_model.transform(texts, embeddings=emb)

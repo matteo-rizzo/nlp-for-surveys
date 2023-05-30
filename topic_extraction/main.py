@@ -20,8 +20,8 @@ docs = document_extraction()
 # ]
 
 seed_topic_list = [
-    ["green", "sustainability", "environment", "transition", "transform", "business"],
-    ["digitalization", "digital", "transition", "transform", "business"],
+    ["green", "sustainability", "environment", "green transition", "green transform", "sustainable transformation", "sustainable business"],
+    ["digitalization", "digital", "digital transition", "digital transformation", "e-business", "digital business", "automation"],
 ]
 
 # --------------------- PASS 1
