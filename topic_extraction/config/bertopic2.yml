@@ -27,7 +27,7 @@ model:
     choice: hdbscan
     params:
       hdbscan:
-        min_cluster_size: 15
+        min_cluster_size: 3
         #        max_cluster_size: 15
         min_samples: 15
         metric: euclidean

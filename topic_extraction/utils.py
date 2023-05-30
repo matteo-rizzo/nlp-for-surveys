@@ -33,7 +33,8 @@ def dump_yaml(data, path: str | Path) -> None:
         yaml.dump(data, f, Dumper=yaml.SafeDumper)
 
 
-def save_csv_results(docs: list[Document], themes: list[int], subjects: list[int], alt_subjects: list[int], theme_keywords: dict[list[str]], subj_keywords: dict[list[str]], path: str | Path) -> None:
+def save_csv_results(docs: list[Document], themes: list[int], subjects: list[int], alt_subjects: list[int],
+                     theme_keywords: dict[list[str]], subj_keywords: dict[list[str]], path: str | Path, agrifood_papers: list[int] = None) -> None:
     """
     Save clustering results to CSV file
 
@@ -54,5 +55,10 @@ def save_csv_results(docs: list[Document], themes: list[int], subjects: list[int
     tk = pd.DataFrame(theme_keywords).to_csv(path / "themes.csv")
     sk = pd.DataFrame(subj_keywords).to_csv(path / "subjects.csv")
 
-    classification_df = pd.DataFrame(dict(themes=themes, subjects=subjects, alt_subjects=alt_subjects), index=ids)
+    a_args = dict()
+    if agrifood_papers:
+        a_args["agrifood"] = agrifood_papers
+    if alt_subjects:
+        a_args["alt_subjects"] = alt_subjects
+    classification_df = pd.DataFrame(dict(themes=themes, subjects=subjects, **a_args), index=ids)
     classification_df.to_csv(path / "classification.csv")

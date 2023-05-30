@@ -91,7 +91,6 @@ class BERTopicExtractor(BaseTopicExtractor):
         self._vectorizer_model = None
         self._weighting_model = None
         self._representation_model = None
-        self._reduce_outliers: bool = False
         self._plot_path: Path = plot_path
         self._instantiation_kwargs = None
 
@@ -234,8 +233,6 @@ class BERTopicExtractor(BaseTopicExtractor):
         }
         self._topic_model = BERTopicExtractor.tl_factory(self._instantiation_kwargs)
 
-        self._reduce_outliers = run_config["reduce_outliers"]
-
         self._embedding_save_path = f'dumps/embeddings/{model_config["sentence_transformer"]}.npy'
         Path(self._embedding_save_path).parent.mkdir(exist_ok=True, parents=True)
 
@@ -310,12 +307,34 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         print(f"Outliers: {len([t for t in topics if t < 0])}")
 
-        if self._reduce_outliers:
+        if kwargs.get("reduce_outliers", False):
             print("*** Reducing outliers ***")
-            topics = self._topic_model.reduce_outliers(texts, topics)
+            thr = kwargs.get("threshold", .0)
+            topics = self._topic_model.reduce_outliers(texts, topics, probabilities=probs, strategy="probabilities", threshold=thr)
+            self._topic_model.update_topics(texts, topics=topics,
+                                            vectorizer_model=self._vectorizer_model,
+                                            ctfidf_model=self._weighting_model,
+                                            representation_model=self._representation_model)
             print(f"Outliers post-reduction: {len([t for t in topics if t < 0])}")
 
         return topics, probs, self._topic_model.get_topics()
+
+    def force_outlier_assignment(self, docs: list[Document], topics: list[int], probabilities: np.ndarray, threshold: float, cluster_index: int) -> list[int]:
+        # Check correct use of parameters
+        if probabilities is None:
+            raise ValueError("Make sure to pass in `probabilities` in order to use the probabilities strategy")
+
+        texts = [d.body for d in docs]
+
+        # Reduce outliers by extracting most likely topics through the topic-term probability matrix
+        new_topics = [cluster_index if prob[cluster_index] >= threshold and topic == -1 else topic for topic, prob in zip(topics, probabilities)]
+
+        self._topic_model.update_topics(texts, topics=new_topics,
+                                        vectorizer_model=self._vectorizer_model,
+                                        ctfidf_model=self._weighting_model,
+                                        representation_model=self._representation_model)
+
+        return new_topics
 
     def plot_wonders(self, documents: list[Document], **kwargs) -> pd.DataFrame:
 
