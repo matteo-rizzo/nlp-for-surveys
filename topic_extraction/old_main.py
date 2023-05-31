@@ -34,13 +34,20 @@ ex1.train(docs, embeddings=embeddings)
 
 # ex._topic_model.merge_topics([d.body for d in docs], topics_to_merge=[1, 2])
 l1_topics, probs, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
+embeddings = ex1._train_embeddings
+l1_words = {k: [w for w, _ in ws] for k, ws in l1_words_topics.items()}
+
+# Embedding fix
+# seed_topic_list = [" ".join(seed_topic) for seed_topic in l1_words.values()]
+# seed_topic_embeddings = ex1._topic_model._extract_embeddings(seed_topic_list)
+# embeddings -= seed_topic_embeddings.mean(axis=0)
+
 del ex1
 torch.cuda.empty_cache()
 
 # Plot/save results
 # ex1.plot_wonders(docs)
 
-l1_words = {k: [w for w, _ in ws] for k, ws in l1_words_topics.items()}
 dump_yaml(l1_words, pl_path1 / "word_list.yml")
 
 # --------------------- END PASS 1
@@ -54,6 +61,7 @@ pl_path2.mkdir(exist_ok=True, parents=True)
 ex2 = BERTopicExtractor(plot_path=pl_path2)
 ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
 ex2.train(docs, embeddings=embeddings)
+print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
 l2_topics, probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
 topic_over_time = ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
 l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=probs, strategy="probabilities", threshold=.3)
@@ -86,7 +94,7 @@ embeddings = None
 if Path(ex3._embedding_save_path).is_file():
     embeddings = np.load(ex3._embedding_save_path)
 
-ex3.train(docs, normalize=True, embeddings=embeddings, fit_reduction=True)
+ex3.train(docs, embeddings=embeddings, fit_reduction=True)
 print(f"DBCV: {ex3._topic_model.hdbscan_model.relative_validity_}")
 l3_topics, probs, l3_words_topics = ex3.batch_extract(docs, -1, use_training_embeddings=True)
 l3_words = {k: [w for w, _ in ws] for k, ws in l3_words_topics.items()}

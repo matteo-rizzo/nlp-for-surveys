@@ -19,7 +19,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import silhouette_score
-from topictuner import TopicModelTuner as TMT
+# from topictuner import TopicModelTuner as TMT
 from umap import UMAP
 
 from topic_extraction.classes import Document
@@ -261,6 +261,7 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         embeddings = kwargs.get("embeddings", None)
         fit_reduction = kwargs.get("fit_reduction", True)
+        y = kwargs.get("y", None)
 
         if embeddings is None:
             # Precompute embeddings
@@ -277,7 +278,7 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         # Topic modelling
         # topics, probs = \
-        self._topic_model.fit(texts, embeddings=embeddings, fit_reduction=fit_reduction)
+        self._topic_model.fit(texts, embeddings=embeddings, fit_reduction=fit_reduction, y=y)
         # Further reduce topics
         # self._topic_model.reduce_topics(texts, nr_topics=3)
 
