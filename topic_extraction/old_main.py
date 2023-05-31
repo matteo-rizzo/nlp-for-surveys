@@ -102,7 +102,7 @@ if Path(ex3._embedding_save_path).is_file():
 
 ex3.train(docs, embeddings=embeddings, fit_reduction=True, y=supervised_list)
 print(f"DBCV: {ex3._topic_model.hdbscan_model.relative_validity_}")
-l3_topics, probs, l3_words_topics = ex3.batch_extract(docs, -1, use_training_embeddings=True)
+l3_topics, probs, l3_words_topics = ex3.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.4)
 l3_words = {k: [w for w, _ in ws] for k, ws in l3_words_topics.items()}
 dump_yaml(l3_words, pl_path3 / "word_list.yml")
 
