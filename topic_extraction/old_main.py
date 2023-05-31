@@ -62,9 +62,9 @@ ex2 = BERTopicExtractor(plot_path=pl_path2)
 ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
 ex2.train(docs, embeddings=embeddings)
 print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
-l2_topics, probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
+l2_topics, probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.4)
 topic_over_time = ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
-l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=probs, strategy="probabilities", threshold=.3)
+l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=probs, strategy="probabilities", threshold=.2)
 
 l2_words = {k: [w for w, _ in ws] for k, ws in l2_words_topics.items()}
 dump_yaml(l2_words, pl_path2 / "word_list.yml")
@@ -74,6 +74,7 @@ dump_yaml(l2_words, pl_path2 / "word_list.yml")
 
 # --------------------- PASS 3
 
+# ***** SIMSEARCH approach *****
 # seed_topic_list2 = [
 #     ['fish', 'harvest', 'agro-food', 'agri-food', 'agrotourism', 'agro-chemical', 'horticulture', 'agriculture', 'agroecology', 'husbandry', 'agrifood', 'agribusiness',
 #      'agrochemical', 'farmer', 'bier', 'agro-industry', 'agroforestry', 'farm', 'farmland', 'aquaculture', 'crop growing', 'farmwork', 'agri-business', 'agroindustry',
@@ -82,6 +83,16 @@ dump_yaml(l2_words, pl_path2 / "word_list.yml")
 #      "agri-food system", "agri-food ecosystem", "agri-food firm", "food system", "bio-district", "digital transformation in agriculture", "food value chain",
 #      "sustainable agriculture", "forest"]
 # ]
+#
+# indices = ex2.document_similarity(embeddings, words=seed_topic_list2[0], threshold=.7)
+# agrifood_papers = np.zeros((len(docs)), dtype=int)
+# agrifood_papers[indices] = 1
+# agrifood_papers = agrifood_papers.tolist()
+# ex2.plot_wonders(docs, add_doc_classes=agrifood_papers, use_training_embeddings=True)
+#
+# exit(0)
+
+# ***** Semi-supervised clustering approach *****
 seed_topic_list2 = None
 
 with open("agrifood.txt", mode="r") as f:

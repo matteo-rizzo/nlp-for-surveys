@@ -19,6 +19,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import silhouette_score
+from sklearn.metrics.pairwise import cosine_similarity
 # from topictuner import TopicModelTuner as TMT
 from umap import UMAP
 
@@ -336,6 +337,15 @@ class BERTopicExtractor(BaseTopicExtractor):
                                         representation_model=self._representation_model)
 
         return new_topics
+
+    def document_similarity(self, document_embeddings: np.ndarray, words: list[str], threshold: float) -> list[int]:
+
+        words_concat = " ".join(words)
+        words_embeddings = self._topic_model._extract_embeddings(words_concat)
+
+        sim_matrix = cosine_similarity(document_embeddings, words_embeddings)
+
+        return np.argwhere(sim_matrix.reshape(-1) > threshold).reshape(-1).tolist()
 
     def plot_wonders(self, documents: list[Document], **kwargs) -> pd.DataFrame:
 
