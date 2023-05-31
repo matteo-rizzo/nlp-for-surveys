@@ -13,17 +13,20 @@ docs = document_extraction()
 
 if __name__ == "__main__":
 
-    # pattern = r"agri|agro"
-    # matching = set([d.id for d in docs if re.search(pattern, d.title)])
-    # matching |= set([d.id for d in docs if re.search(pattern, d.body)])
-    # matching |= set([d.id for d in docs if any([re.search(pattern, k) for k in d.keywords])])
+    pattern = r"agri|agro|livestock|farm|food"
+    matching = set([d.id for d in docs if re.search(pattern, d.title)])
+    matching |= set([d.id for d in docs if re.search(pattern, d.body)])
+    matching |= set([d.id for d in docs if any([re.search(pattern, k) for k in d.keywords])])
 
-    with open("agrifood.txt", mode="r") as f:
-        matching = set(f.readlines())
+    with open("agrifood.txt", mode="w") as f:
+        f.writelines([d + "\n" for d in matching])
 
-    supervised_list = [(1 if d.id in matching else -1) for d in docs]
+    # with open("agrifood.txt", mode="r") as f:
+    #     matching = set([s.strip() for s in f.readlines()])
 
-    seed_topic_list = None # [
+    supervised_list = [(2 if d.id in matching else -1) for d in docs]
+
+    seed_topic_list = None  # [
     #     ['fish', 'harvest', 'agro-food', 'agri-food', 'agrotourism', 'agro-chemical', 'horticulture', 'agriculture', 'agroecology', 'husbandry', 'agrifood', 'agribusiness',
     #      'agrochemical', 'farmer', 'bier', 'agro-industry', 'agroforestry', 'farm', 'farmland', 'aquaculture', 'crop growing', 'farmwork', 'agri-business', 'agroindustry',
     #      'sharecropping', 'agricultural', 'wine', 'cultivation', 'viticulture', 'beer', 'hydroponics', 'agrofood', 'food', 'farming', 'agronomy', 'livestock', 'agritourism',
