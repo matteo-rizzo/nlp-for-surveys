@@ -13,7 +13,7 @@ docs = document_extraction()
 
 if __name__ == "__main__":
 
-    pattern = r"agri|agro|livestock|farm|food"
+    pattern = r"agri|agro|livestock|farm|food|forest"
     matching = set([d.id for d in docs if re.search(pattern, d.title)])
     matching |= set([d.id for d in docs if re.search(pattern, d.body)])
     matching |= set([d.id for d in docs if any([re.search(pattern, k) for k in d.keywords])])
