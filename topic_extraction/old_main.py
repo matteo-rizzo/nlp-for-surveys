@@ -74,60 +74,62 @@ dump_yaml(l2_words, pl_path2 / "word_list.yml")
 
 # --------------------- PASS 3
 
-# ***** SIMSEARCH approach *****
-# seed_topic_list2 = [
-#     ['fish', 'harvest', 'agro-food', 'agri-food', 'agrotourism', 'agro-chemical', 'horticulture', 'agriculture', 'agroecology', 'husbandry', 'agrifood', 'agribusiness',
-#      'agrochemical', 'farmer', 'bier', 'agro-industry', 'agroforestry', 'farm', 'farmland', 'aquaculture', 'crop growing', 'farmwork', 'agri-business', 'agroindustry',
-#      'sharecropping', 'agricultural', 'wine', 'cultivation', 'viticulture', 'beer', 'hydroponics', 'agrofood', 'food', 'farming', 'agronomy', 'livestock', 'agritourism',
-#      'agrifood-tech',
-#      "agri-food system", "agri-food ecosystem", "agri-food firm", "food system", "bio-district", "digital transformation in agriculture", "food value chain",
-#      "sustainable agriculture", "forest"]
-# ]
-#
-# indices = ex2.document_similarity(embeddings, words=seed_topic_list2[0], threshold=.7)
-# agrifood_papers = np.zeros((len(docs)), dtype=int)
-# agrifood_papers[indices] = 1
-# agrifood_papers = agrifood_papers.tolist()
-# ex2.plot_wonders(docs, add_doc_classes=agrifood_papers, use_training_embeddings=True)
-#
-# exit(0)
-
-# ***** Semi-supervised clustering approach *****
-seed_topic_list2 = None
-
-with open("agrifood.txt", mode="r") as f:
-        matching = set([s.strip() for s in f.readlines()])
-
-supervised_list = [(2 if d.id in matching else -1) for d in docs]
-
 pl_path3 = Path("plots") / "agrifood"
 pl_path3.mkdir(exist_ok=True, parents=True)
-ex3 = BERTopicExtractor(plot_path=pl_path3)
-ex3.prepare(config_file="topic_extraction/config/bertopic3.yml", seed_topic_list=seed_topic_list2)  # dimensionality_reduction=ex2._reduction_model
-del ex2._embedding_model
-torch.cuda.empty_cache()
 
-embeddings = None
-if Path(ex3._embedding_save_path).is_file():
-    embeddings = np.load(ex3._embedding_save_path)
+# ***** SIMSEARCH approach *****
+embeddings = np.load(ex2._embedding_save_path)
+seed_topic_list2 = [
+    ['fish', 'harvest', 'agro-food', 'agri-food', 'agrotourism', 'agro-chemical', 'horticulture', 'agriculture', 'agroecology', 'husbandry', 'agrifood', 'agribusiness',
+     'agrochemical', 'farming', 'bier', 'agro-industry', 'agroforestry', 'farmland', 'aquaculture', 'crop growing', 'farmwork', 'agri-business', 'agroindustry',
+     'sharecropping', 'agricultural', 'wine', 'cultivation', 'viticulture', 'beer', 'hydroponics', 'agrofood', 'food', 'farming', 'agronomy', 'livestock', 'agritourism',
+     'agrifood-tech', 'beverages',
+     "agri-food system", "agri-food firm", "food system", "bio-district", "food value chain", "sustainable agriculture", "forest", "e-agrifood", "e-agribusiness",
+     "digital agriculture"]
+]
 
-ex3.train(docs, embeddings=embeddings, fit_reduction=True, y=supervised_list)
-print(f"DBCV: {ex3._topic_model.hdbscan_model.relative_validity_}")
-l3_topics, probs, l3_words_topics = ex3.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.4)
-l3_words = {k: [w for w, _ in ws] for k, ws in l3_words_topics.items()}
-dump_yaml(l3_words, pl_path3 / "word_list.yml")
-
-agrifood_k_cluster = int(input("Enter the cluster number: "))
-
-l3_topics_all = ex3.force_outlier_assignment(docs, l3_topics, probs, threshold=.3, cluster_index=agrifood_k_cluster)
-
+indices = ex2.document_similarity(embeddings, words=seed_topic_list2[0], threshold=.71)
+agrifood_papers = np.zeros((len(docs)), dtype=int)
+agrifood_papers[indices] = 1
+agrifood_papers = agrifood_papers.tolist()
+print(f"Found {len(indices)} agrifood papers")
 ex2._plot_path = pl_path3
-agrifood_papers = [(1 if t == agrifood_k_cluster else 0) for t in l3_topics_all]
-# agrifood_papers = [(1 if d.id in matching else is_agri) for d, is_agri in zip(docs, agrifood_papers)]
 ex2.plot_wonders(docs, add_doc_classes=agrifood_papers, use_training_embeddings=True)
 
-fig_topics = ex3._topic_model.visualize_topics(width=1200, height=1200)
-fig_topics.write_html(ex3._plot_path / "topic_space.html")
+# ***** Semi-supervised clustering approach *****
+# seed_topic_list2 = None
+#
+# with open("agrifood.txt", mode="r") as f:
+#     matching = set([s.strip() for s in f.readlines()])
+#
+# supervised_list = [(2 if d.id in matching else -1) for d in docs]
+#
+# ex3 = BERTopicExtractor(plot_path=pl_path3)
+# ex3.prepare(config_file="topic_extraction/config/bertopic3.yml", seed_topic_list=seed_topic_list2)  # dimensionality_reduction=ex2._reduction_model
+# del ex2._embedding_model
+# torch.cuda.empty_cache()
+#
+# embeddings = None
+# if Path(ex3._embedding_save_path).is_file():
+#     embeddings = np.load(ex3._embedding_save_path)
+#
+# ex3.train(docs, embeddings=embeddings, fit_reduction=True, y=supervised_list)
+# print(f"DBCV: {ex3._topic_model.hdbscan_model.relative_validity_}")
+# l3_topics, probs, l3_words_topics = ex3.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.4)
+# l3_words = {k: [w for w, _ in ws] for k, ws in l3_words_topics.items()}
+# dump_yaml(l3_words, pl_path3 / "word_list.yml")
+#
+# agrifood_k_cluster = int(input("Enter the cluster number: "))
+#
+# l3_topics_all = ex3.force_outlier_assignment(docs, l3_topics, probs, threshold=.3, cluster_index=agrifood_k_cluster)
+#
+# ex2._plot_path = pl_path3
+# agrifood_papers = [(1 if t == agrifood_k_cluster else 0) for t in l3_topics_all]
+# # agrifood_papers = [(1 if d.id in matching else is_agri) for d, is_agri in zip(docs, agrifood_papers)]
+# ex2.plot_wonders(docs, add_doc_classes=agrifood_papers, use_training_embeddings=True)
+#
+# fig_topics = ex3._topic_model.visualize_topics(width=1200, height=1200)
+# fig_topics.write_html(ex3._plot_path / "topic_space.html")
 
 # --------------------- END PASS 3
 
