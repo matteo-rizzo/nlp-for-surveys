@@ -13,10 +13,11 @@ docs = document_extraction()
 
 if __name__ == "__main__":
 
+    # pattern = "agri|agro|livestock|farm|(?=.*\\bfood\\b)(?=.*\\bindustry\\b).+|(?=.*\\bforest\\b)(?=.*\\bindustry\\b).+"
     pattern = r"agri|agro|livestock|farm|food|forest"
-    matching = set([d.id for d in docs if re.search(pattern, d.title)])
-    matching |= set([d.id for d in docs if re.search(pattern, d.body)])
-    matching |= set([d.id for d in docs if any([re.search(pattern, k) for k in d.keywords])])
+    matching = set([d.id for d in docs if re.search(pattern, d.title, flags=re.IGNORECASE)])
+    matching |= set([d.id for d in docs if re.search(pattern, d.body, flags=re.IGNORECASE)])
+    matching |= set([d.id for d in docs if any([re.search(pattern, k, flags=re.IGNORECASE) for k in d.keywords])])
 
     with open("agrifood.txt", mode="w") as f:
         f.writelines([d + "\n" for d in matching])
