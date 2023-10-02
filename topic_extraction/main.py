@@ -14,6 +14,16 @@ PASS_1 = False
 PASS_2 = True
 
 
+def remove_unwanted_cluster(doc_embeddings, unwanted_embeddings):
+    # Compute centroid of unwanted cluster
+    u = np.mean(unwanted_embeddings, axis=0)
+
+    # Subtract projection onto the unwanted direction
+    new_embeddings = doc_embeddings - np.outer(np.dot(doc_embeddings, u) / np.dot(u, u), u)
+
+    return new_embeddings
+
+
 def get_word_relative_importance(words_topics: dict[str, list[tuple[str, float]]]) -> dict[str, list[tuple[str, float]]]:
     """
     Weight the importance of representative keywords
@@ -65,7 +75,7 @@ if PASS_1:
 
     l1_topics, l1_probs, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
     torch.cuda.empty_cache()
-    # theme_embeddings = ex1._topic_model.topic_embeddings_
+    theme_embeddings = ex1._topic_model.topic_embeddings_
     # embeddings = ex1._train_embeddings
     del ex1
 
@@ -89,7 +99,8 @@ if PASS_2:
 
     if Path(ex2._embedding_save_path).is_file():
         embeddings = np.load(ex2._embedding_save_path)
-    #     embeddings -= (theme_embeddings[1] - theme_embeddings[2])
+        # Project embeddings in other space to remove unwanted themes
+        # embeddings = remove_unwanted_cluster(embeddings, theme_embeddings[1:])
 
     ex2.train(docs, normalize=False, embeddings=embeddings)
     print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
