@@ -5,7 +5,7 @@ model:
   bertopic:
     min_topic_size: 10
     language: english
-    top_n_words: 10
+    top_n_words: 15
     nr_topics: auto
     calculate_probabilities: true
 
@@ -17,7 +17,7 @@ model:
     params:
       umap:
         n_neighbors: 20
-        n_components: 10
+        n_components: 5
         min_dist: 0.0
         metric: cosine
         low_memory: false
@@ -27,7 +27,7 @@ model:
     choice: hdbscan
     params:
       hdbscan:
-        min_cluster_size: 3
+        min_cluster_size: 20
         #        max_cluster_size: 15
         min_samples: 15
         metric: euclidean
@@ -54,11 +54,19 @@ model:
 
 
   representation:
-    choice: mmr # keybert
+    choice: [ keybert, mmr ] # keybert, mmr, pos
     params:
       keybert:
-        random_state: 412763287
+        random_state: 17
+        top_n_words: 15
       mmr:
         diversity: 0.2
-
-
+        top_n_words: 15
+      pos:
+        model: en_core_web_lg
+        top_n_words: 15
+        pos_patterns: [
+          [ { 'POS': 'ADJ' }, { 'POS': 'NOUN' } ],
+          [ { 'POS': 'NOUN' } ],
+          [ { 'POS': 'ADJ' } ]
+        ]

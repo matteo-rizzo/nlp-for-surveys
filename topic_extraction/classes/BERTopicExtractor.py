@@ -2,16 +2,14 @@ from __future__ import annotations
 
 import itertools
 import logging
-import os
 from pathlib import Path
 from typing import Callable, Generic, TypeVar, Iterable
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch
 from bertopic import BERTopic
-from bertopic.representation import MaximalMarginalRelevance, KeyBERTInspired
+from bertopic.representation import MaximalMarginalRelevance, KeyBERTInspired, PartOfSpeech
 from bertopic.vectorizers import ClassTfidfTransformer
 from hdbscan import HDBSCAN
 from sentence_transformers import SentenceTransformer
@@ -20,6 +18,7 @@ from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import silhouette_score
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
 # from topictuner import TopicModelTuner as TMT
 from umap import UMAP
 
@@ -32,6 +31,21 @@ from topic_extraction.visualization.visualize_stacked_topics import visualize_st
 T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
+
+
+def get_topic_probabilities(probabilities: np.ndarray[float], predictions: np.ndarray[int]) -> np.ndarray[float]:
+    # Get indices of samples that got assigned -1 as the topic (outliers)
+    outlier_indices: np.ndarray[int] = np.argwhere(np.asarray(predictions) == -1).reshape(-1)  # np.where(np.asarray(predictions) == -1, 1, 0)
+
+    if len(outlier_indices) > 0:
+        # Set the topic with the highest probability for outliers
+        predictions[outlier_indices] = probabilities[outlier_indices].argmax(axis=1)
+
+    assert not predictions[predictions < 0].any(), "There are still predictions at -1"
+
+    # Get probability of the most matching topic
+    best_probabilities = probabilities[:, predictions].diagonal()  # (N,)
+    return best_probabilities
 
 
 def grid_search(estimator_class: T, grid_params: dict, metric_fun: Callable[[Generic[T]], float], large_is_better: bool,
@@ -196,6 +210,8 @@ class BERTopicExtractor(BaseTopicExtractor):
                 model_cl = HDBSCAN(**conf["params"][conf["choice"]])
             elif conf["choice"] == "kmeans":
                 model_cl = KMeans(**conf["params"][conf["choice"]])
+            elif conf["choice"] == "gmm":
+                model_cl = GaussianMixture(**conf["params"][conf["choice"]])
         self._clustering_model = model_cl
         # if UMAP.n_components is increased may want to change metric in HDBSCAN
 
@@ -207,12 +223,16 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         # Step 6 - (Optional) Fine-tune topic representations
         conf = model_config["representation"]
-        model_ft = None
-        if conf["choice"] == "mmr":
-            model_ft = MaximalMarginalRelevance(**conf["params"][conf["choice"]])
-        elif conf["choice"] == "keybert":
-            model_ft = KeyBERTInspired(**conf["params"][conf["choice"]])
-        self._representation_model = model_ft
+        model_ft = list()
+        if "mmr" in conf["choice"]:
+            model_ft.append(MaximalMarginalRelevance(**conf["params"]["mmr"]))
+        elif "keybert" in conf["choice"]:
+            model_ft.append(KeyBERTInspired(**conf["params"]["keybert"]))
+        elif "pos" in conf["choice"]:
+            model_ft.append(PartOfSpeech(**conf["params"]["pos"]))
+        else:
+            model_ft.append(None)
+        self._representation_model = model_ft if len(model_ft) > 1 else model_ft[0]
 
         tl_args = dict(
             embedding_model=self._embedding_model,  # Step 1 - Extract embeddings
@@ -244,7 +264,7 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         tmt = TMT(verbose=0)
 
-        tmt.createEmbeddings(texts)  # Run embedding model
+        tmt.createEmbeddings(texts)  # Run an embedding model
         tmt.reduce()  # Run UMAP
         # lastRunResultsDF = tmt.randomSearch([*range(10, 200)], [.1, .25, .5, .75, 1], iters=50)
 
@@ -319,10 +339,12 @@ class BERTopicExtractor(BaseTopicExtractor):
                                             representation_model=self._representation_model)
             print(f"Outliers post-reduction: {len([t for t in topics if t < 0])}")
 
-        return topics, probs, self._topic_model.get_topics()
+        topic_probs = get_topic_probabilities(probs, np.asarray(topics))
+
+        return topics, topic_probs, self._topic_model.get_topics()
 
     def force_outlier_assignment(self, docs: list[Document], topics: list[int], probabilities: np.ndarray, threshold: float, cluster_index: int) -> list[int]:
-        # Check correct use of parameters
+        # Check the correct use of parameters
         if probabilities is None:
             raise ValueError("Make sure to pass in `probabilities` in order to use the probabilities strategy")
 

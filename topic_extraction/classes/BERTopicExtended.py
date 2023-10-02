@@ -12,7 +12,9 @@ from bertopic import BERTopic
 from bertopic._utils import check_is_fitted, check_documents_type, check_embeddings_shape
 import plotly.graph_objects as go
 from bertopic.backend._utils import select_backend
+from bertopic.cluster import BaseCluster
 from bertopic.cluster._utils import is_supported_hdbscan, hdbscan_delegator
+from sklearn.metrics.pairwise import cosine_similarity
 
 from topic_extraction.visualization.plotly_utils import visualize_topics_over_time_ext
 
@@ -197,154 +199,104 @@ class BERTopicExtended(BERTopic):
     #     self.fit_transform(documents, embeddings, reduced_embeddings, y)
     #     return self
     #
-    # def transform(self, documents: Union[str, list[str]], embeddings: np.ndarray = None, reduced_embeddings: str | np.ndarray = None) -> tuple[list[int], np.ndarray]:
-    #     check_is_fitted(self)
-    #     check_embeddings_shape(embeddings, documents)
-    #
-    #     if isinstance(documents, str):
-    #         documents = [documents]
-    #
-    #     if reduced_embeddings is None:
-    #         if embeddings is None:
-    #             embeddings = self._extract_embeddings(documents, method="document", verbose=self.verbose)
-    #
-    #         umap_embeddings = self.umap_model.transform(embeddings)
-    #         logger.info("Reduced dimensionality")
-    #     elif isinstance(reduced_embeddings, np.ndarray):
-    #         umap_embeddings = reduced_embeddings
-    #     elif isinstance(reduced_embeddings, str) and os.path.isfile(reduced_embeddings):
-    #         umap_embeddings = np.load(reduced_embeddings)
-    #
-    #     # Extract predictions and probabilities if it is a HDBSCAN-like model
-    #     if is_supported_hdbscan(self.hdbscan_model):
-    #         predictions, probabilities = hdbscan_delegator(self.hdbscan_model, "approximate_predict", umap_embeddings)
-    #
-    #         # Calculate probabilities
-    #         if self.calculate_probabilities and isinstance(self.hdbscan_model, hdbscan.HDBSCAN):
-    #             probabilities = hdbscan.membership_vector(self.hdbscan_model, umap_embeddings)
-    #             logger.info("Calculated probabilities with HDBSCAN")
-    #     else:
-    #         predictions = self.hdbscan_model.predict(umap_embeddings)
-    #         probabilities = None
-    #     logger.info("Predicted clusters")
-    #
-    #     # Map probabilities and predictions
-    #     probabilities = self._map_probabilities(probabilities, original_topics=True)
-    #     predictions = self._map_predictions(predictions)
-    #     return predictions, probabilities
-    #
-    # def fit_transform(self,
-    #                   documents: list[str],
-    #                   embeddings: np.ndarray = None,
-    #                   reduced_embeddings: np.ndarray | str = None,
-    #                   y: Union[list[int], np.ndarray] = None) -> tuple[list[int], Union[np.ndarray, None]]:
-    #     """ Fit the models on a collection of documents, generate topics, and return the docs with topics
-    #
-    #     Arguments:
-    #         documents: A list of documents to fit on
-    #         reduced_embeddings: pre-trained and UMAP-reduced embeddings, as a path to dump or embeddings.
-    #             If a str, it will compute them only if non-existent
-    #         embeddings: Pre-trained document embeddings. These can be used
-    #                     instead of the sentence-transformer model
-    #         y: The target class for (semi)-supervised modeling. Use -1 if no class for a
-    #            specific instance is specified.
-    #
-    #     Returns:
-    #         predictions: Topic predictions for each documents
-    #         probabilities: The probability of the assigned topic per document.
-    #                        If `calculate_probabilities` in BERTopic is set to True, then
-    #                        it calculates the probabilities of all topics across all documents
-    #                        instead of only the assigned topic. This, however, slows down
-    #                        computation and may increase memory usage.
-    #
-    #     Examples:
-    #
-    #     ```python
-    #     from bertopic import BERTopic
-    #     from sklearn.datasets import fetch_20newsgroups
-    #
-    #     docs = fetch_20newsgroups(subset='all')['data']
-    #     topic_model = BERTopic()
-    #     topics, probs = topic_model.fit_transform(docs)
-    #     ```
-    #
-    #     If you want to use your own embeddings, use it as follows:
-    #
-    #     ```python
-    #     from bertopic import BERTopic
-    #     from sklearn.datasets import fetch_20newsgroups
-    #     from sentence_transformers import SentenceTransformer
-    #
-    #     # Create embeddings
-    #     docs = fetch_20newsgroups(subset='all')['data']
-    #     sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
-    #     embeddings = sentence_model.encode(docs, show_progress_bar=True)
-    #
-    #     # Create topic model
-    #     topic_model = BERTopic()
-    #     topics, probs = topic_model.fit_transform(docs, embeddings)
-    #     ```
-    #     """
-    #     check_documents_type(documents)
-    #     check_embeddings_shape(embeddings, documents)
-    #
-    #     documents = pd.DataFrame({"Document": documents, "ID": range(len(documents)), "Topic": None})
-    #
-    #     if isinstance(reduced_embeddings, np.ndarray):
-    #         self.reduced_train_embeddings = reduced_embeddings
-    #     elif isinstance(reduced_embeddings, str) and os.path.isfile(reduced_embeddings):
-    #         self.reduced_train_embeddings = np.load(reduced_embeddings)
-    #     else:
-    #         # Compute embeddings if not passed, reduce and save them
-    #
-    #         # Extract embeddings
-    #         if embeddings is None:
-    #             self.embedding_model = select_backend(self.embedding_model, language=self.language)
-    #             embeddings = self._extract_embeddings(documents.Document, method="document", verbose=self.verbose)
-    #             logger.info("Transformed documents to Embeddings")
-    #         else:
-    #             if self.embedding_model is not None:
-    #                 self.embedding_model = select_backend(self.embedding_model, language=self.language)
-    #
-    #         # Reduce dimensionality
-    #         if self.seed_topic_list is not None and self.embedding_model is not None:
-    #             y, embeddings = self._guided_topic_modeling(embeddings)
-    #         umap_embeddings = self._reduce_dimensionality(embeddings, y)
-    #
-    #         # Save to avoid recomputing
-    #         self.reduced_train_embeddings = umap_embeddings
-    #
-    #         if reduced_embeddings:
-    #             p = Path(reduced_embeddings)
-    #
-    #             pardir = p
-    #             if reduced_embeddings.endswith(".npy"):
-    #                 pardir = p.parent
-    #             else:
-    #                 p = p / "reduced_embeddings.npy"
-    #             pardir.mkdir(parents=True, exist_ok=True)
-    #
-    #             np.save(str(p), self.reduced_train_embeddings)
-    #
-    #     # Cluster reduced embeddings
-    #     documents, probabilities = self._cluster_embeddings(self.reduced_train_embeddings, documents, y=y)
-    #
-    #     # Sort and Map Topic IDs by their frequency
-    #     if not self.nr_topics:
-    #         documents = self._sort_mappings_by_frequency(documents)
-    #
-    #     # Extract topics by calculating c-TF-IDF
-    #     self._extract_topics(documents)
-    #
-    #     # Reduce topics
-    #     if self.nr_topics:
-    #         documents = self._reduce_topics(documents)
-    #
-    #     # Save the top 3 most representative documents per topic
-    #     self._save_representative_docs(documents)
-    #
-    #     # Resulting output
-    #     self.probabilities_ = self._map_probabilities(probabilities, original_topics=True)
-    #     predictions = documents.Topic.to_list()
-    #
-    #     return predictions, self.probabilities_
+    def transform(self,
+                  documents: Union[str, list[str]],
+                  embeddings: np.ndarray = None,
+                  images: list[str] = None) -> tuple[list[int], np.ndarray]:
+        """ After having fit a model, use transform to predict new instances
+
+        Arguments:
+            documents: A single document or a list of documents to predict on
+            embeddings: Pre-trained document embeddings. These can be used
+                        instead of the sentence-transformer model.
+            images: A list of paths to the images to predict on or the images themselves
+
+        Returns:
+            predictions: Topic predictions for each documents
+            probabilities: The topic probability distribution which is returned by default.
+                           If `calculate_probabilities` in BERTopic is set to False, then the
+                           probabilities are not calculated to speed up computation and
+                           decrease memory usage.
+
+        Examples:
+
+        ```python
+        from bertopic import BERTopic
+        from sklearn.datasets import fetch_20newsgroups
+
+        docs = fetch_20newsgroups(subset='all')['data']
+        topic_model = BERTopic().fit(docs)
+        topics, probs = topic_model.transform(docs)
+        ```
+
+        If you want to use your own embeddings:
+
+        ```python
+        from bertopic import BERTopic
+        from sklearn.datasets import fetch_20newsgroups
+        from sentence_transformers import SentenceTransformer
+
+        # Create embeddings
+        docs = fetch_20newsgroups(subset='all')['data']
+        sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
+        embeddings = sentence_model.encode(docs, show_progress_bar=True)
+
+        # Create topic model
+        topic_model = BERTopic().fit(docs, embeddings)
+        topics, probs = topic_model.transform(docs, embeddings)
+        ```
+        """
+        check_is_fitted(self)
+        check_embeddings_shape(embeddings, documents)
+
+        if isinstance(documents, str) or documents is None:
+            documents = [documents]
+
+        if embeddings is None:
+            embeddings = self._extract_embeddings(documents,
+                                                  images=images,
+                                                  method="document",
+                                                  verbose=self.verbose)
+
+        # Check if an embedding model was found
+        if embeddings is None:
+            raise ValueError("No embedding model was found to embed the documents."
+                             "Make sure when loading in the model using BERTopic.load()"
+                             "to also specify the embedding model.")
+
+        # Transform without hdbscan_model and umap_model using only cosine similarity
+        elif type(self.hdbscan_model) == BaseCluster:
+            sim_matrix = cosine_similarity(embeddings, np.array(self.topic_embeddings_))
+            predictions = np.argmax(sim_matrix, axis=1) - self._outliers
+
+            if self.calculate_probabilities:
+                probabilities = sim_matrix
+            else:
+                probabilities = np.max(sim_matrix, axis=1)
+
+        # Transform with the full pipeline
+        else:
+            umap_embeddings = self.umap_model.transform(embeddings)
+            logger.info("Reduced dimensionality")
+
+            # Extract predictions and probabilities if it is a HDBSCAN-like model
+            if is_supported_hdbscan(self.hdbscan_model):
+                predictions, probabilities = hdbscan_delegator(self.hdbscan_model, "approximate_predict", umap_embeddings)
+
+                # Calculate probabilities
+                if self.calculate_probabilities:
+                    probabilities = hdbscan_delegator(self.hdbscan_model, "membership_vector", umap_embeddings)
+                    logger.info("Calculated probabilities with HDBSCAN")
+            else:
+                predictions = self.hdbscan_model.predict(umap_embeddings)
+                probabilities = None
+                # ******************** MY ADDITION ***************************
+                if hasattr(self.hdbscan_model, "predict_proba"):
+                    probabilities = self.hdbscan_model.predict_proba(umap_embeddings)  # (N, clusters)
+                # ******************** END ADDITION ***************************
+            logger.info("Predicted clusters")
+
+            # Map probabilities and predictions
+            probabilities = self._map_probabilities(probabilities, original_topics=True)
+            predictions = self._map_predictions(predictions)
+        return predictions, probabilities

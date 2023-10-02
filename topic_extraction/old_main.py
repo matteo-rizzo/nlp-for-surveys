@@ -149,6 +149,6 @@ print(f"Recall: {re}")
 # --------------------- END PASS 3
 
 save_csv_results(docs, themes=l1_topics, theme_keywords=l1_words, subjects=l2_topics, alt_subjects=l2_topics_all,
-                 subj_keywords=l2_words, path=pl_path1.parent / "results", agrifood_papers=agrifood_papers)
+                 subj_keywords=l2_words, csv_path=pl_path1.parent / "results", agrifood_papers=agrifood_papers)
 
 # ex.see_topic_evolution(docs, bins_n=3)
