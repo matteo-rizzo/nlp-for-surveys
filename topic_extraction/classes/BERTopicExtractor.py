@@ -336,7 +336,8 @@ class BERTopicExtractor(BaseTopicExtractor):
             self._topic_model.update_topics(texts, topics=topics,
                                             vectorizer_model=self._vectorizer_model,
                                             ctfidf_model=self._weighting_model,
-                                            representation_model=self._representation_model)
+                                            representation_model=self._representation_model,
+                                            top_n_words=self._topic_model.top_n_words)
             print(f"Outliers post-reduction: {len([t for t in topics if t < 0])}")
 
         topic_probs = get_topic_probabilities(probs, np.asarray(topics))

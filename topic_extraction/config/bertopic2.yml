@@ -3,9 +3,9 @@ run:
 
 model:
   bertopic:
-    min_topic_size: 10
+    min_topic_size: 15
     language: english
-    top_n_words: 15
+    top_n_words: 10
     nr_topics: auto
     calculate_probabilities: true
 
@@ -27,7 +27,7 @@ model:
     choice: hdbscan
     params:
       hdbscan:
-        min_cluster_size: 20
+        min_cluster_size: 15
         #        max_cluster_size: 15
         min_samples: 15
         metric: euclidean
@@ -42,8 +42,8 @@ model:
     params:
       stop_words: english
       ngram_range: !!python/tuple [ 1, 2 ]
-      max_df: 0.8 # TF upper cap
-      min_df: 0.2
+      #      max_df: 0.8
+      #      min_df: 0.2
       max_features: 10000
 
 
@@ -60,7 +60,7 @@ model:
         random_state: 17
         top_n_words: 15
       mmr:
-        diversity: 0.2
+        diversity: 0.7
         top_n_words: 15
       pos:
         model: en_core_web_lg

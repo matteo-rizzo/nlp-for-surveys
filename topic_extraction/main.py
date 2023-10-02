@@ -10,73 +10,98 @@ from topic_extraction.utils import dump_yaml, save_csv_results
 
 pd.set_option("display.max_columns", None)
 
+PASS_1 = False
+PASS_2 = True
+
+
+def get_word_relative_importance(words_topics: dict[str, list[tuple[str, float]]]) -> dict[str, list[tuple[str, float]]]:
+    """
+    Weight the importance of representative keywords
+
+    :param words_topics: topic keywords for each cluster
+    :return: dictionary as the input but with weighted importance
+    """
+
+    # sum_importance = {k: sum([s for _, s in ws]) for k, ws in words_topics.items()}
+
+    # words = {k: [(w, float(s / sum_importance[k])) for w, s in ws] for k, ws in words_topics.items()}
+    words = {k: [(w, float(s)) for w, s in ws] for k, ws in words_topics.items()}
+    # words_score = {k: [s / sum_importance[k] for _, s in ws] for k, ws in words_topics.items()}
+    return words
+
+
 docs = document_extraction()
 
 # Pass 1
 
-# seed_topic_list = [
-#     ["circular economy", "sustainability", "sustainable business", "sustainable development", "recycling", "waste", "green transition", "green transform"],
-#     ["digitalization", "digital business", "digital economy", "digital innovation", "business transformation"]
-# ]
+l1_topics = None
+if PASS_1:
+    # seed_topic_list = [
+    #     ["circular economy", "sustainability", "sustainable business", "sustainable development", "recycling", "waste", "green transition", "green transform"],
+    #     ["digitalization", "digital business", "digital economy", "digital innovation", "business transformation"]
+    # ]
 
-# seed_topic_list1 = [
-#     ["green", "sustainability", "environment", "green transition", "green transform", "sustainable transformation", "sustainable business"],
-#     ["digitalization", "digital", "digital transition", "digital transformation", "e-business", "digital business", "automation"],
-# ]
+    # seed_topic_list1 = [
+    #     ["green", "sustainability", "environment", "green transition", "green transform", "sustainable transformation", "sustainable business"],
+    #     ["digitalization", "digital", "digital transition", "digital transformation", "e-business", "digital business", "automation"],
+    # ]
 
-seed_topic_list = [
-    ["green", "sustainability", "environment", "transition", "transform", "business"],
-    ["digitalization", "digital", "transition", "transform", "business"],
-]
+    seed_topic_list = [
+        ["green", "sustainability", "environment", "transition", "transform", "business"],
+        ["digitalization", "digital", "transition", "transform", "business"],
+    ]
 
-# --------------------- PASS 1
-pl_path1 = Path("plots") / "themes"
-pl_path1.mkdir(exist_ok=True, parents=True)
-ex1 = BERTopicExtractor(plot_path=pl_path1)
-ex1.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=seed_topic_list)
+    # --------------------- PASS 1
+    pl_path1 = Path("plots") / "themes"
+    pl_path1.mkdir(exist_ok=True, parents=True)
+    ex1 = BERTopicExtractor(plot_path=pl_path1)
+    ex1.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=seed_topic_list)
 
-embeddings = None
-if Path(ex1._embedding_save_path).is_file():
-    embeddings = np.load(ex1._embedding_save_path)
+    embeddings = None
+    if Path(ex1._embedding_save_path).is_file():
+        embeddings = np.load(ex1._embedding_save_path)
 
-ex1.train(docs, embeddings=embeddings, normalize=False)
+    ex1.train(docs, embeddings=embeddings, normalize=False)
 
-l1_topics, l1_probs, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
-torch.cuda.empty_cache()
-del ex1
+    l1_topics, l1_probs, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
+    torch.cuda.empty_cache()
+    # theme_embeddings = ex1._topic_model.topic_embeddings_
+    # embeddings = ex1._train_embeddings
+    del ex1
 
-# Plot/save results
-# ex1.plot_wonders(docs)
+    # Plot/save results
+    # ex1.plot_wonders(docs)
 
-l1_words = {k: [w for w, _ in ws] for k, ws in l1_words_topics.items()}
-dump_yaml(l1_words, pl_path1 / "word_list.yml")
+    l1_words = get_word_relative_importance(l1_words_topics)
+    dump_yaml(l1_words, pl_path1 / "word_list.yml")
 
 # --------------------- END PASS 1
 
 
-# --------------------- PASS 2
-# Determine field of application
+if PASS_2:
+    # --------------------- PASS 2
+    # Determine field of application
 
-pl_path2 = Path("plots") / "fields"
-pl_path2.mkdir(exist_ok=True, parents=True)
-ex2 = BERTopicExtractor(plot_path=pl_path2)
-ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
+    pl_path2 = Path("plots") / "fields"
+    pl_path2.mkdir(exist_ok=True, parents=True)
+    ex2 = BERTopicExtractor(plot_path=pl_path2)
+    ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
 
-if Path(ex2._embedding_save_path).is_file():
-    embeddings = np.load(ex2._embedding_save_path)
+    if Path(ex2._embedding_save_path).is_file():
+        embeddings = np.load(ex2._embedding_save_path)
+    #     embeddings -= (theme_embeddings[1] - theme_embeddings[2])
 
-ex2.train(docs, normalize=True, embeddings=embeddings)
-print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
-l2_topics, l2_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
-ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
-# l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=probs, strategy="probabilities", threshold=.3)
+    ex2.train(docs, normalize=False, embeddings=embeddings)
+    print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
+    l2_topics, l2_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
+    ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
+    # l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=probs, strategy="probabilities", threshold=.3)
 
-l2_words = {k: [w for w, _ in ws] for k, ws in l2_words_topics.items()}
-dump_yaml(l2_words, pl_path2 / "word_list.yml")
+    l2_words = get_word_relative_importance(l2_words_topics)
+    dump_yaml(l2_words, pl_path2 / "word_list.yml")
 
-torch.cuda.empty_cache()
-# --------------------- END PASS 2
-
+    torch.cuda.empty_cache()
+    # --------------------- END PASS 2
 
 # --------------------- PASS 3
 
@@ -132,7 +157,8 @@ seed_topic_list2 = [
 
 # --------------------- END PASS 3
 
-save_csv_results(docs, themes=l1_topics, theme_keywords=l1_words, subjects=l2_topics, alt_subjects=None,
-                 subj_keywords=l2_words, csv_path=pl_path1.parent / "results", agrifood_papers=None, theme_probs=l1_probs, subj_probs=l2_probs)
+if PASS_2 and PASS_1:
+    save_csv_results(docs, themes=l1_topics, theme_keywords=l1_words, subjects=l2_topics, alt_subjects=None,
+                     subj_keywords=l2_words, csv_path=pl_path1.parent / "results", agrifood_papers=None, theme_probs=l1_probs, subj_probs=l2_probs)
 
 # ex.see_topic_evolution(docs, bins_n=3)
