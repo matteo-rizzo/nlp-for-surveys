@@ -7,6 +7,7 @@ import pandas as pd
 import yaml
 
 from topic_extraction.classes.Document import Document
+from topic_extraction.link_from_id import get_scopus_link
 
 
 def expand_scores(keywords_dict: dict) -> dict:
@@ -43,8 +44,11 @@ def dump_yaml(data, path: str | Path) -> None:
         yaml.dump(data, f, Dumper=yaml.SafeDumper)
 
 
-def save_csv_results(docs: list[Document], themes: list[int], subjects: list[int], alt_subjects: list[int] | None,
-                     theme_keywords: dict[list[str]], subj_keywords: dict[list[str]], csv_path: str | Path,
+def save_csv_results(docs: list[Document],
+                     themes: list[int], subjects: list[int], alt_subjects: list[int] | None,
+                     theme_keywords: dict[str, list[tuple[str, float]]], subj_keywords: dict[str, list[tuple[str, float]]],
+                     csv_path: str | Path,
+                     papers_by_subject: dict[str, list[str]],
                      agrifood_papers: list[int] = None, theme_probs: list[float] | None = None, subj_probs: list[float] | None = None) -> None:
     """
     Save clustering results to CSV file
@@ -80,5 +84,8 @@ def save_csv_results(docs: list[Document], themes: list[int], subjects: list[int
         a_args["themes_prob"] = theme_probs
     if subj_probs is not None:
         a_args["subj_prob"] = subj_probs
-    classification_df = pd.DataFrame(dict(themes=themes, subjects=subjects, **a_args), index=ids)
+
+    a_args["link"] = [get_scopus_link(s_id) for s_id in ids]
+    classification_df = pd.DataFrame(dict(themes=themes, subjects=subjects, **a_args), index=ids).sort_values(by=["subjects", "themes"])
+
     classification_df.to_csv(csv_path / "classification.csv")

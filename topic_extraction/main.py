@@ -126,7 +126,7 @@ if PASS_2:
     grouped_papers = list_paper_per_cluster(docs, l2_topics)
 
     ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
-    # l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=probs, strategy="probabilities", threshold=.3)
+    l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=l2_probs, strategy="probabilities", threshold=.4)
 
     l2_words = get_word_relative_importance(l2_words_topics)
     dump_yaml(l2_words, pl_path2 / "word_list.yml")
@@ -189,7 +189,10 @@ seed_topic_list2 = [
 # --------------------- END PASS 3
 
 if PASS_2 and PASS_1:
-    save_csv_results(docs, themes=l1_topics, theme_keywords=l1_words, subjects=l2_topics, alt_subjects=None,
-                     subj_keywords=l2_words, csv_path=pl_path1.parent / "results", agrifood_papers=None, theme_probs=l1_probs, subj_probs=l2_probs)
+    save_csv_results(docs, themes=l1_topics, subjects=l2_topics, alt_subjects=l2_topics_all,
+                     subj_keywords=l2_words, theme_keywords=l1_words,
+                     csv_path=pl_path1.parent / "results",
+                     papers_by_subject=grouped_papers,
+                     agrifood_papers=None, theme_probs=l1_probs, subj_probs=l2_probs)
 
 # ex.see_topic_evolution(docs, bins_n=3)

@@ -820,3 +820,5 @@ FodyWeavers.xsd
 # End of https://www.toptal.com/developers/gitignore/api/python,jetbrains,jetbrains+all,jetbrains+iml,visualstudio,visualstudiocode
 
 text_summarization/functional/secrets.py
+
+dumps/
