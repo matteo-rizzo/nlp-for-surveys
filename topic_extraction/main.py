@@ -1,3 +1,4 @@
+from itertools import groupby
 from pathlib import Path
 
 import numpy as np
@@ -5,6 +6,7 @@ import pandas as pd
 import torch.cuda
 
 from topic_extraction.classes.BERTopicExtractor import BERTopicExtractor
+from topic_extraction.classes.Document import Document
 from topic_extraction.extraction import document_extraction
 from topic_extraction.utils import dump_yaml, save_csv_results
 
@@ -12,6 +14,20 @@ pd.set_option("display.max_columns", None)
 
 PASS_1 = False
 PASS_2 = True
+
+
+def list_paper_per_cluster(documents: list[Document], topics: list[int] | np.ndarray[int]) -> dict[int, list[str]]:
+    if isinstance(topics, np.ndarray):
+        topics: list[int] = topics.tolist()
+
+    document_ids: list[str] = [d.id for d in documents]
+
+    doc_by_cluster: list[tuple[str, int]] = sorted(list(zip(document_ids, topics)), key=lambda x: x[1])
+
+    grouped_docs = dict()  # defaultdict(list)
+    for k, g in groupby(doc_by_cluster, key=lambda x: x[1]):
+        grouped_docs[k] = [doc_id for doc_id, _ in g]
+    return grouped_docs
 
 
 def remove_unwanted_cluster(doc_embeddings, unwanted_embeddings):
@@ -106,6 +122,9 @@ if PASS_2:
     ex2.train(docs, normalize=False, embeddings=embeddings)
     print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
     l2_topics, l2_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
+
+    grouped_papers = list_paper_per_cluster(docs, l2_topics)
+
     ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
     # l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=probs, strategy="probabilities", threshold=.3)
 
