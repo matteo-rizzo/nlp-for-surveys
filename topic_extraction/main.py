@@ -97,6 +97,7 @@ if PASS_2:
     ex2 = BERTopicExtractor(plot_path=pl_path2)
     ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
 
+    embeddings = None
     if Path(ex2._embedding_save_path).is_file():
         embeddings = np.load(ex2._embedding_save_path)
         # Project embeddings in other space to remove unwanted themes
