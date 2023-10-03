@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import math
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
@@ -109,17 +110,19 @@ def tuning(normalize: bool, gs_config: Path | str):
         if Path(extractor._embedding_save_path).is_file():
             embeddings = np.load(extractor._embedding_save_path)
 
-        extractor.train(docs, normalize=normalize, embeddings=embeddings)
+        topics, _ = extractor.train(docs, normalize=normalize, embeddings=embeddings)
 
         # DBCV score
         bdcv_score = extractor._topic_model.hdbscan_model.relative_validity_
         n_clusters = int(extractor._topic_model.hdbscan_model.labels_.max() + 1)
+        n_outliers: int = len([t for t in topics if t < 0])
 
-        score = (bdcv_score + n_clusters) / 2
+        # Score prioritize results with good ratio between n_cluster and outliers, and have a good DBCV score
+        score = (bdcv_score + (n_clusters / (math.log2(n_outliers + 1) + 1))) / 2
         # Flatten arguments to fit them in dataframe, and remove parameters that were not tuned
         flattened_args: dict[str, dict] = {f"{block_name}_{strategy_name}": strategy_config for block_name, block_conf in last_tested_arguments.items()
                                            for strategy_name, strategy_config in block_conf.items()}
-        ext_args = {**flattened_args, "score": score, "n_clusters": n_clusters, "bdcv": bdcv_score}
+        ext_args = {**flattened_args, "n_outliers": n_outliers, "n_clusters": n_clusters, "bdcv": bdcv_score, "score": score}
         # if we got a better score, store it and the parameters
         if score > best_score:
             best_score = score

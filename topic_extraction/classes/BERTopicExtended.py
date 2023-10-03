@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import logging
-import os.path
-from pathlib import Path
-from typing import Union
+from typing import Union, Any
 
-import hdbscan
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 from bertopic import BERTopic
 from bertopic._utils import check_is_fitted, check_documents_type, check_embeddings_shape
-import plotly.graph_objects as go
 from bertopic.backend._utils import select_backend
 from bertopic.cluster import BaseCluster
 from bertopic.cluster._utils import is_supported_hdbscan, hdbscan_delegator
@@ -83,9 +80,8 @@ class BERTopicExtended(BERTopic):
                                               width=width,
                                               height=height)
 
-    def fit(self, *args, **kwargs) -> BERTopicExtended:
-        self.fit_transform(*args, **kwargs)
-        return self
+    def fit(self, *args, **kwargs) -> Any:
+        return self.fit_transform(*args, **kwargs)
 
     def fit_transform(self,
                       documents: list[str],

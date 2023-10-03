@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TypeVar
+from typing import TypeVar, Any
 
 import numpy as np
 import pandas as pd
@@ -170,7 +170,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         summaryDF.to_csv("tuning3.csv")
         print(lastRunResultsDF)
 
-    def train(self, documents: list[Document], *args, **kwargs) -> None:
+    def train(self, documents: list[Document], *args, **kwargs) -> Any:
         texts = [d.body for d in documents]
 
         print("*** Generating embeddings ***")
@@ -194,7 +194,7 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         # Topic modelling
         # topics, probs = \
-        self._topic_model.fit(texts, embeddings=embeddings, fit_reduction=fit_reduction, y=y)
+        return self._topic_model.fit(texts, embeddings=embeddings, fit_reduction=fit_reduction, y=y)
         # Further reduce topics
         # self._topic_model.reduce_topics(texts, nr_topics=3)
 
