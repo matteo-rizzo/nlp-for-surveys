@@ -49,7 +49,7 @@ def tuning(normalize: bool, gs_config: Path | str):
         the config file should have one entry for each "choice". If only 1 possibility is present, then it should have parameters
         directly with no entry name for a module.
     """
-    docs = document_extraction()
+    docs = document_extraction(add_abstract=True, add_keywords=True)
 
     suffix: str = dt.datetime.now().strftime("%Y%m%d_%H%M%S") + ("" if not normalize else "_norm")
 
@@ -63,7 +63,7 @@ def tuning(normalize: bool, gs_config: Path | str):
 
     block_parameters: dict[str, list] = defaultdict(list)
 
-    # For each module/block, generate all combination of hyperparameters
+    # For each module/block, generate all the combination of hyperparameters
     print("Preparing grid search...")
     for k in tqdm(tunable_parameters):
         k_choice: str | None = base_model_params[k].get("choice", None)
