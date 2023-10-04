@@ -12,7 +12,7 @@ from topic_extraction.utils import dump_yaml, save_csv_results
 
 pd.set_option("display.max_columns", None)
 
-PASS_1 = False
+PASS_1 = True
 PASS_2 = True
 
 
@@ -89,7 +89,7 @@ if PASS_1:
 
     ex1.train(docs, embeddings=embeddings, normalize=False)
 
-    l1_topics, l1_probs, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
+    l1_topics, l1_probs, _, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
     torch.cuda.empty_cache()
     theme_embeddings = ex1._topic_model.topic_embeddings_
     # embeddings = ex1._train_embeddings
@@ -121,12 +121,16 @@ if PASS_2:
 
     ex2.train(docs, normalize=False, embeddings=embeddings)
     print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
-    l2_topics, l2_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
+    l2_topics, l2_probs, l2_raw_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
 
     grouped_papers = list_paper_per_cluster(docs, l2_topics)
 
     ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
-    l2_topics_all = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=l2_probs, strategy="probabilities", threshold=.4)
+    l2_topics_all_prob = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=l2_raw_probs, strategy="probabilities", threshold=.3)
+    # l2_topics_all_dist = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, strategy="distributions", threshold=.3)
+    # l2_topics_all = [p if p == d else -1 for p, d in zip(l2_topics_all_prob, l2_topics_all_dist)]
+    l2_topics_all = l2_topics_all_prob
+    print(f"Outliers with forced topics: {len([t for t in l2_topics_all if t < 0])}")
 
     l2_words = get_word_relative_importance(l2_words_topics)
     dump_yaml(l2_words, pl_path2 / "word_list.yml")

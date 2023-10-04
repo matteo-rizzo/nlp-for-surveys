@@ -14,6 +14,7 @@ from tqdm import tqdm
 from topic_extraction.classes.BERTopicExtractor import BERTopicExtractor
 from topic_extraction.extraction import document_extraction
 from topic_extraction.utils import load_yaml, dump_yaml
+import datetime as dt
 
 
 # K-MEANS best (specter): 15
@@ -46,8 +47,10 @@ def tuning(normalize: bool, gs_config: Path | str):
     """
     docs = document_extraction()
 
+    suffix: str = dt.datetime.now().strftime("%Y%m%d_%H%M%S") + ("" if not normalize else "_norm")
+
     pl_path = Path("plots") / "validation"
-    result_path = "gs_results" + "" if not normalize else "_normalize"
+    result_path = "gs_results_" + suffix
 
     grid_search_params = load_yaml(gs_config)
     base_params = load_yaml("topic_extraction/config/bertopic2.yml")
@@ -117,7 +120,7 @@ def tuning(normalize: bool, gs_config: Path | str):
         n_clusters = int(extractor._topic_model.hdbscan_model.labels_.max() + 1)
         n_outliers: int = len([t for t in topics if t < 0])
 
-        # Score prioritize results with good ratio between n_cluster and outliers, and have a good DBCV score
+        # Score prioritize results with a good ratio between n_cluster and outliers, and have a good DBCV score
         score = (bdcv_score + (n_clusters / (math.log2(n_outliers + 1) + 1))) / 2
         # Flatten arguments to fit them in dataframe, and remove parameters that were not tuned
         flattened_args: dict[str, dict] = {f"{block_name}_{strategy_name}": strategy_config for block_name, block_conf in last_tested_arguments.items()
@@ -139,11 +142,11 @@ def tuning(normalize: bool, gs_config: Path | str):
 
     dfr = pd.DataFrame.from_records(all_results).sort_values(by="score", ascending=False)
 
-    print(f"Best num clusters: {dfr['n_clusters'][0]}")
+    print(f"Num clusters in best run: {dfr.iloc[0]['n_clusters']}")
 
-    # Save complete results and best configuration in YAML
+    # Save complete results and the best configuration in YAML
     dfr.to_csv(pl_path / f"{result_path}.csv", index=False)
-    dump_yaml(best_full_config, pl_path / f"best_config.csv")
+    dump_yaml(best_full_config, pl_path / f"best_config_{suffix}.yml")
 
 
 if __name__ == "__main__":

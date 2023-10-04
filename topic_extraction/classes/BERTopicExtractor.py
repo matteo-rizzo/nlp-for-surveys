@@ -237,7 +237,7 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         topic_probs = get_topic_probabilities(probs, np.asarray(topics))
 
-        return topics, topic_probs, self._topic_model.get_topics()
+        return topics, topic_probs, probs, self._topic_model.get_topics()
 
     def force_outlier_assignment(self, docs: list[Document], topics: list[int], probabilities: np.ndarray, threshold: float, cluster_index: int) -> list[int]:
         # Check the correct use of parameters
