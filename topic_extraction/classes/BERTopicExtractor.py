@@ -148,7 +148,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         }
         self._topic_model = BERTopicExtractor.tl_factory(self._instantiation_kwargs)
 
-        self._embedding_save_path = f'dumps/embeddings/{model_config["sentence_transformer"]}.npy'
+        self._embedding_save_path = f"dumps/embeddings/{model_config['sentence_transformer']}.npy"
         Path(self._embedding_save_path).parent.mkdir(exist_ok=True, parents=True)
 
     def train(self, documents: list[Document], *args, **kwargs) -> Any:

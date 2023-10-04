@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import itertools
 import math
 from collections import defaultdict
@@ -13,12 +14,15 @@ from tqdm import tqdm
 
 from topic_extraction.classes.BERTopicExtractor import BERTopicExtractor
 from topic_extraction.extraction import document_extraction
-from topic_extraction.utils import load_yaml, dump_yaml
+from topic_extraction.utils import load_yaml, dump_yaml, vector_rejection
 import datetime as dt
-
 
 # K-MEANS best (specter): 15
 # HDBSCAN best (specter): 'min_samples': 3, 'min_cluster_size': 15, 'metric': 'euclidean', 'cluster_selection_method': 'eom'
+
+USE_PASS_1_EMBEDDINGS = True  # use embeddings from guided topic modeling from the first model
+ORTHOGONAL_SUBJECTS = True  # remove topics from the first model
+EMB_PATH = "dumps/embeddings/allenai-specter.npy"
 
 
 def get_all_combination_indices(params: dict[str, list]) -> list[tuple]:
@@ -92,6 +96,20 @@ def tuning(normalize: bool, gs_config: Path | str):
     all_results = list()
     best_full_config: dict | None = None
     pl_path.mkdir(exist_ok=True, parents=True)
+
+    if USE_PASS_1_EMBEDDINGS:
+        embeddings = np.load("dumps/embeddings/gtm_embeddings.npy")
+    elif Path(EMB_PATH).is_file():
+        embeddings = np.load(EMB_PATH)
+    else:
+        raise ValueError("Embeddings were not loaded.")
+
+    if ORTHOGONAL_SUBJECTS:
+        theme_embeddings = np.load("dumps/embeddings/theme_embeddings.npy")
+        embeddings = vector_rejection(embeddings, theme_embeddings[1:])
+
+    embeddings_c = copy.deepcopy(embeddings)
+
     for block_index_combination in tqdm(all_blocks_combination_indices):
         block_combination_values = tuple(block_argument_values[block_i_comb] for block_argument_values, block_i_comb in zip(block_values, block_index_combination))
         kv_args: dict[str, dict] = dict(zip(block_keys, block_combination_values))
@@ -109,11 +127,8 @@ def tuning(normalize: bool, gs_config: Path | str):
         extractor = BERTopicExtractor(plot_path=pl_path)
         extractor.prepare(config=run_config)
 
-        embeddings = None
-        if Path(extractor._embedding_save_path).is_file():
-            embeddings = np.load(extractor._embedding_save_path)
-
         topics, _ = extractor.train(docs, normalize=normalize, embeddings=embeddings)
+        assert np.array_equal(embeddings_c, embeddings), "Embeddings changed!"
 
         # DBCV score
         bdcv_score = extractor._topic_model.hdbscan_model.relative_validity_

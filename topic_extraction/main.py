@@ -8,7 +8,7 @@ import torch.cuda
 from topic_extraction.classes.BERTopicExtractor import BERTopicExtractor
 from topic_extraction.classes.Document import Document
 from topic_extraction.extraction import document_extraction
-from topic_extraction.utils import dump_yaml, save_csv_results
+from topic_extraction.utils import dump_yaml, save_csv_results, vector_rejection
 
 pd.set_option("display.max_columns", None)
 
@@ -32,24 +32,6 @@ def list_paper_per_cluster(documents: list[Document], topics: list[int] | np.nda
     for k, g in groupby(doc_by_cluster, key=lambda x: x[1]):
         grouped_docs[k] = [doc_id for doc_id, _ in g]
     return grouped_docs
-
-
-def vector_rejection(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """
-     Compute vector rejection of a from b. This means that the new vector will be "a" minus projection of "a" on "b"
-
-    :param a: 1D or 2D vector. If 2D rejection is done row-wise
-    :param b: 1D or 2D vectors to reject from.
-    :return: new vector having the components of a that are orthogonal to b
-    """
-    # Compute centroid of unwanted cluster
-    if b.ndim > 1:
-        b = np.sum(b, axis=0)
-    assert b.ndim == 1, "Cannot reject multiple vectors"
-
-    # Subtract projection onto the unwanted direction
-    rejected_a = a - ((np.dot(a, b) / np.dot(b, b)).reshape(-1, 1) * b.reshape(1, -1))
-    return rejected_a
 
 
 def get_word_relative_importance(words_topics: dict[str, list[tuple[str, float]]]) -> dict[str, list[tuple[str, float]]]:
@@ -106,6 +88,11 @@ if PASS_1:
     torch.cuda.empty_cache()
     theme_embeddings = ex1._topic_model.topic_embeddings_
     embeddings = ex1._train_embeddings
+
+    # Save them for usage in tuning-routine
+    np.save("dumps/embeddings/gtm_embeddings.npy", embeddings)
+    np.save("dumps/embeddings/theme_embeddings.npy", theme_embeddings)
+
     del ex1
 
     # Plot/save results

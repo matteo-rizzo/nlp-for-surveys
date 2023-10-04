@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -89,3 +90,21 @@ def save_csv_results(docs: list[Document],
     classification_df = pd.DataFrame(dict(themes=themes, subjects=subjects, **a_args), index=ids).sort_values(by=["subjects", "themes"])
 
     classification_df.to_csv(csv_path / "classification.csv")
+
+
+def vector_rejection(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """
+     Compute vector rejection of a from b. This means that the new vector will be "a" minus projection of "a" on "b"
+
+    :param a: 1D or 2D vector. If 2D rejection is done row-wise
+    :param b: 1D or 2D vectors to reject from.
+    :return: new vector having the components of a that are orthogonal to b
+    """
+    # Compute centroid of unwanted cluster
+    if b.ndim > 1:
+        b = np.sum(b, axis=0)
+    assert b.ndim == 1, "Cannot reject multiple vectors"
+
+    # Subtract projection onto the unwanted direction
+    rejected_a = a - ((np.dot(a, b) / np.dot(b, b)).reshape(-1, 1) * b.reshape(1, -1))
+    return rejected_a
