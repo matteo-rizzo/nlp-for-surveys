@@ -15,6 +15,9 @@ pd.set_option("display.max_columns", None)
 PASS_1 = True
 PASS_2 = True
 
+USE_PASS_1_EMBEDDINGS = True  # use embeddings from guided topic modeling from the first model
+ORTHOGONAL_SUBJECTS = True  # remove topics from the first model
+
 
 def list_paper_per_cluster(documents: list[Document], topics: list[int] | np.ndarray[int]) -> dict[int, list[str]]:
     if isinstance(topics, np.ndarray):
@@ -30,14 +33,22 @@ def list_paper_per_cluster(documents: list[Document], topics: list[int] | np.nda
     return grouped_docs
 
 
-def remove_unwanted_cluster(doc_embeddings, unwanted_embeddings):
+def vector_rejection(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """
+     Compute vector rejection of a from b. This means that the new vector will be "a" minus projection of "a" on "b"
+
+    :param a: 1D or 2D vector. If 2D rejection is done row-wise
+    :param b: 1D or 2D vectors to reject from.
+    :return: new vector having the components of a that are orthogonal to b
+    """
     # Compute centroid of unwanted cluster
-    u = np.mean(unwanted_embeddings, axis=0)
+    if b.ndim > 1:
+        b = np.sum(b, axis=0)
+    assert b.ndim == 1, "Cannot reject multiple vectors"
 
     # Subtract projection onto the unwanted direction
-    new_embeddings = doc_embeddings - np.outer(np.dot(doc_embeddings, u) / np.dot(u, u), u)
-
-    return new_embeddings
+    rejected_a = a - ((np.dot(a, b) / np.dot(b, b)).reshape(-1, 1) * b.reshape(1, -1))
+    return rejected_a
 
 
 def get_word_relative_importance(words_topics: dict[str, list[tuple[str, float]]]) -> dict[str, list[tuple[str, float]]]:
@@ -60,6 +71,8 @@ docs = document_extraction()
 
 # Pass 1
 
+embeddings = None
+theme_embeddings = None
 l1_topics = None
 if PASS_1:
     # seed_topic_list = [
@@ -73,8 +86,8 @@ if PASS_1:
     # ]
 
     seed_topic_list = [
-        ["green", "sustainability", "environment", "transition", "transform", "business"],
-        ["digitalization", "digital", "transition", "transform", "business"],
+        ["green", "sustainability", "environment", "transition", "transform", "business", "strategy", "model"],  # added strategy, model, automation
+        ["digitalization", "digital", "automation", "transition", "transform", "business", "strategy", "model"],
     ]
 
     # --------------------- PASS 1
@@ -83,7 +96,6 @@ if PASS_1:
     ex1 = BERTopicExtractor(plot_path=pl_path1)
     ex1.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=seed_topic_list)
 
-    embeddings = None
     if Path(ex1._embedding_save_path).is_file():
         embeddings = np.load(ex1._embedding_save_path)
 
@@ -92,7 +104,7 @@ if PASS_1:
     l1_topics, l1_probs, _, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
     torch.cuda.empty_cache()
     theme_embeddings = ex1._topic_model.topic_embeddings_
-    # embeddings = ex1._train_embeddings
+    embeddings = ex1._train_embeddings
     del ex1
 
     # Plot/save results
@@ -113,15 +125,21 @@ if PASS_2:
     ex2 = BERTopicExtractor(plot_path=pl_path2)
     ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
 
-    embeddings = None
-    if Path(ex2._embedding_save_path).is_file():
-        embeddings = np.load(ex2._embedding_save_path)
+    if not (USE_PASS_1_EMBEDDINGS and PASS_1):
+        # Compute embeddings from scratch
+        embeddings = None
+        if Path(ex2._embedding_save_path).is_file():
+            # Reload embeddings
+            embeddings = np.load(ex2._embedding_save_path)
+
+    if ORTHOGONAL_SUBJECTS and PASS_1:
         # Project embeddings in other space to remove unwanted themes
-        # embeddings = remove_unwanted_cluster(embeddings, theme_embeddings[1:])
+        embeddings = vector_rejection(embeddings, theme_embeddings[1:])
 
     ex2.train(docs, normalize=False, embeddings=embeddings)
     print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
     l2_topics, l2_probs, l2_raw_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
+    print(f"Found {int(ex2._topic_model.hdbscan_model.labels_.max() + 1)} subjects.")
 
     grouped_papers = list_paper_per_cluster(docs, l2_topics)
 
@@ -130,7 +148,7 @@ if PASS_2:
     # l2_topics_all_dist = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, strategy="distributions", threshold=.3)
     # l2_topics_all = [p if p == d else -1 for p, d in zip(l2_topics_all_prob, l2_topics_all_dist)]
     l2_topics_all = l2_topics_all_prob
-    print(f"Outliers with forced topics: {len([t for t in l2_topics_all if t < 0])}")
+    print(f"Outliers with forced subjects: {len([t for t in l2_topics_all if t < 0])}")
 
     l2_words = get_word_relative_importance(l2_words_topics)
     dump_yaml(l2_words, pl_path2 / "word_list.yml")
@@ -140,14 +158,14 @@ if PASS_2:
 
 # --------------------- PASS 3
 
-seed_topic_list2 = [
-    ['fish', 'harvest', 'agro-food', 'agri-food', 'agrotourism', 'agro-chemical', 'horticulture', 'agriculture', 'agroecology', 'husbandry', 'agrifood', 'agribusiness',
-     'agrochemical', 'farmer', 'bier', 'agro-industry', 'agroforestry', 'farm', 'farmland', 'aquaculture', 'crop growing', 'farmwork', 'agri-business', 'agroindustry',
-     'sharecropping', 'agricultural', 'wine', 'cultivation', 'viticulture', 'beer', 'hydroponics', 'agrofood', 'food', 'farming', 'agronomy', 'livestock', 'agritourism',
-     'agrifood-tech',
-     "agri-food system", "agri-food ecosystem", "agri-food firm", "food system", "bio-district", "digital transformation in agriculture", "food value chain",
-     "sustainable agriculture", "forest"]
-]
+# seed_topic_list2 = [
+#     ['fish', 'harvest', 'agro-food', 'agri-food', 'agrotourism', 'agro-chemical', 'horticulture', 'agriculture', 'agroecology', 'husbandry', 'agrifood', 'agribusiness',
+#      'agrochemical', 'farmer', 'bier', 'agro-industry', 'agroforestry', 'farm', 'farmland', 'aquaculture', 'crop growing', 'farmwork', 'agri-business', 'agroindustry',
+#      'sharecropping', 'agricultural', 'wine', 'cultivation', 'viticulture', 'beer', 'hydroponics', 'agrofood', 'food', 'farming', 'agronomy', 'livestock', 'agritourism',
+#      'agrifood-tech',
+#      "agri-food system", "agri-food ecosystem", "agri-food firm", "food system", "bio-district", "digital transformation in agriculture", "food value chain",
+#      "sustainable agriculture", "forest"]
+# ]
 
 # seed_topic_list2 = [
 #     ["agrifood", "agri", "agronomy", "nutrition", "ecological", "cultivation", "farm", "agriculture", "crops", "aquaculture", "agroecology", "crop growing",
