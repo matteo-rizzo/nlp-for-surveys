@@ -132,7 +132,7 @@ def tuning(normalize: bool, gs_config: Path | str):
 
         # DBCV score
         bdcv_score = extractor._topic_model.hdbscan_model.relative_validity_
-        n_clusters = int(extractor._topic_model.hdbscan_model.labels_.max() + 1)
+        n_clusters = max(topics) + 1
         n_outliers: int = len([t for t in topics if t < 0])
 
         # Score prioritize results with a good ratio between n_cluster and outliers, and have a good DBCV score

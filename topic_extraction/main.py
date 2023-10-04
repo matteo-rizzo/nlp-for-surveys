@@ -50,7 +50,7 @@ def get_word_relative_importance(words_topics: dict[str, list[tuple[str, float]]
     return words
 
 
-docs = document_extraction()
+docs = document_extraction(add_abstract=True, add_keywords=True)
 
 # Pass 1
 
@@ -127,7 +127,7 @@ if PASS_2:
     ex2.train(docs, normalize=NORMALIZE_INPUT_EMBEDDINGS, embeddings=embeddings)
     print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
     l2_topics, l2_probs, l2_raw_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
-    print(f"Found {int(ex2._topic_model.hdbscan_model.labels_.max() + 1)} subjects.")
+    print(f"Found {max(l2_topics) + 1} subjects.")
 
     grouped_papers = list_paper_per_cluster(docs, l2_topics)
 
