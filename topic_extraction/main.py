@@ -17,6 +17,7 @@ PASS_2 = True
 
 USE_PASS_1_EMBEDDINGS = True  # use embeddings from guided topic modeling from the first model
 ORTHOGONAL_SUBJECTS = True  # remove topics from the first model
+NORMALIZE_INPUT_EMBEDDINGS = False  # L2-normalization of sentence embeddings
 
 
 def list_paper_per_cluster(documents: list[Document], topics: list[int] | np.ndarray[int]) -> dict[int, list[str]]:
@@ -99,7 +100,7 @@ if PASS_1:
     if Path(ex1._embedding_save_path).is_file():
         embeddings = np.load(ex1._embedding_save_path)
 
-    ex1.train(docs, embeddings=embeddings, normalize=False)
+    ex1.train(docs, embeddings=embeddings, normalize=NORMALIZE_INPUT_EMBEDDINGS)
 
     l1_topics, l1_probs, _, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
     torch.cuda.empty_cache()
@@ -136,7 +137,7 @@ if PASS_2:
         # Project embeddings in other space to remove unwanted themes
         embeddings = vector_rejection(embeddings, theme_embeddings[1:])
 
-    ex2.train(docs, normalize=False, embeddings=embeddings)
+    ex2.train(docs, normalize=NORMALIZE_INPUT_EMBEDDINGS, embeddings=embeddings)
     print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
     l2_topics, l2_probs, l2_raw_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
     print(f"Found {int(ex2._topic_model.hdbscan_model.labels_.max() + 1)} subjects.")

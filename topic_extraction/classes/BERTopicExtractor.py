@@ -16,7 +16,6 @@ from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
-# from topictuner import TopicModelTuner as TMT
 from umap import UMAP
 
 from topic_extraction.classes import Document
@@ -151,24 +150,6 @@ class BERTopicExtractor(BaseTopicExtractor):
 
         self._embedding_save_path = f'dumps/embeddings/{model_config["sentence_transformer"]}.npy'
         Path(self._embedding_save_path).parent.mkdir(exist_ok=True, parents=True)
-
-    def tuning(self, documents: list[Document]):
-        texts = [d.body for d in documents]
-
-        print("*** Tuning BERTopic ***")
-
-        tmt = TMT(verbose=0)
-
-        tmt.createEmbeddings(texts)  # Run an embedding model
-        tmt.reduce()  # Run UMAP
-        # lastRunResultsDF = tmt.randomSearch([*range(10, 200)], [.1, .25, .5, .75, 1], iters=50)
-
-        lastRunResultsDF = tmt.gridSearch([*range(35, 41)])  # [x / 100 for x in range(10, 101, 10)]
-        summaryDF = tmt.summarizeResults(lastRunResultsDF).sort_values(by=["number_uncategorized"])
-        # tmt.visualizeSearch(lastRunResultsDF).show()
-        tmt.visualizeSearch(lastRunResultsDF).show()
-        summaryDF.to_csv("tuning3.csv")
-        print(lastRunResultsDF)
 
     def train(self, documents: list[Document], *args, **kwargs) -> Any:
         texts = [d.body for d in documents]
