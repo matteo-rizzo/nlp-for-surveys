@@ -57,7 +57,19 @@ def extract_scopus_id_from_link(df: pd.DataFrame) -> list[str | None]:
     return sids
 
 
-def document_extraction(add_abstract: bool = True, add_keywords: bool = False, clean: bool = True) -> list[Document]:
+def document_extraction(text_body: list[str], clean: bool = True) -> list[Document]:
+    text_order: list[str] = list()
+    for t in text_body:
+        match t:
+            case "a":
+                j = "Abstract"
+            case "t":
+                j = "Title"
+            case _:
+                j = t
+        text_order.append(j)
+    text_body = text_order
+
     df = pd.read_csv("data/TwinTransitionEstrazione7mar2023.csv", usecols=["Title", "Abstract", "Year", "Author Keywords", "EID", "Link"])
 
     keywords: list[list[str]] = [[c.strip() for c in s.split(";")] for s in df["Author Keywords"].fillna("").tolist()]
@@ -65,12 +77,13 @@ def document_extraction(add_abstract: bool = True, add_keywords: bool = False, c
     ids: list[str] = extract_scopus_id_from_link(df[["EID", "Link"]].fillna(""))  # [extract_scopus_id(s) for s in df[["EID", "Link"]].fillna("").tolist()]
     assert None not in ids, "There were None values in Scopus ids"
 
-    df["all"] = df["Title"]
-    if add_abstract:
-        df["all"] = df["all"].str.cat(df["Abstract"], sep=". ")
-    if add_keywords:
-        k_series = pd.Series(["; ".join(ks) for ks in keywords])
-        df["all"] = df["all"].str.cat(k_series, sep=". ")
+    df["all"] = df[text_body[0]]
+    for t in text_body[1:]:
+        if t == "k":
+            k_series = pd.Series(["; ".join(ks) for ks in keywords])
+            df["all"] = df["all"].str.cat(k_series, sep=". ")
+        else:
+            df["all"] = df["all"].str.cat(df[t], sep=". ")
 
     texts: list[str] = df["all"].tolist()
     if clean:

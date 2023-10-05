@@ -52,9 +52,9 @@ def save_csv_results(docs: list[Document],
                      themes: list[int], subjects: list[int], alt_subjects: list[int] | None,
                      theme_keywords: dict[int, list[tuple[str, float]]], subj_keywords: dict[int, list[tuple[str, float]]],
                      csv_path: str | Path,
-                     papers_by_subject: dict[str, list[str]],
+                     papers_by_subject: dict[str, list[str]] = None,
                      agrifood_papers: list[int] = None, theme_probs: list[float] | None = None, subj_probs: list[float] | None = None,
-                     write_ods: bool = True) -> None:
+                     write_ods: bool = True, file_suffix: str | None = None) -> None:
     """
     Save clustering results to CSV file
 
@@ -69,6 +69,7 @@ def save_csv_results(docs: list[Document],
     :param subj_probs: confidence for cluster assignment of subjects
     :param theme_probs: confidence for cluster assignment with themes
     :param write_ods: write all results in a single ODS sheet, or in three CSV files
+    :param file_suffix: str to add to the filename as suffix
     """
 
     csv_path.mkdir(exist_ok=True, parents=True)
@@ -96,15 +97,15 @@ def save_csv_results(docs: list[Document],
 
     if write_ods:
         # Write Sheet with three tabbed sheets
-        with pd.ExcelWriter(csv_path / "all_results.ods", engine="odf") as exc_writer:
+        with pd.ExcelWriter(csv_path / f"all_results_{file_suffix}.ods", engine="odf") as exc_writer:
             classification_df.to_excel(exc_writer, sheet_name="classification", index=True)
             theme_df.to_excel(exc_writer, sheet_name="themes", index=False)
             subjects_df.to_excel(exc_writer, sheet_name="subjects", index=False)
     else:
         # Write three csv files
-        classification_df.to_csv(csv_path / "classification.csv", index=True)
-        theme_df.to_csv(csv_path / "themes.csv", index=False)
-        subjects_df.to_csv(csv_path / "subjects.csv", index=False)
+        classification_df.to_csv(csv_path / f"classification_{file_suffix}.csv", index=True)
+        theme_df.to_csv(csv_path / f"themes_{file_suffix}.csv", index=False)
+        subjects_df.to_csv(csv_path / f"subjects_{file_suffix}.csv", index=False)
 
 
 def vector_rejection(a: np.ndarray, b: np.ndarray) -> np.ndarray:

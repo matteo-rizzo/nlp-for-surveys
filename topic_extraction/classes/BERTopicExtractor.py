@@ -251,6 +251,7 @@ class BERTopicExtractor(BaseTopicExtractor):
         print("*** Plotting results ***")
 
         emb_train: bool = kwargs.get("use_training_embeddings", False)
+        file_suffix: str | None = kwargs.get("file_suffix", "")
 
         self._plot_path.mkdir(parents=True, exist_ok=True)
 
@@ -271,15 +272,15 @@ class BERTopicExtractor(BaseTopicExtractor):
         reduced_embeddings = self._reduction_model.transform(emb)
 
         fig_topics = self._topic_model.visualize_topics(width=1200, height=1200)
-        fig_topics.write_html(self._plot_path / "topic_space.html")
+        fig_topics.write_html(self._plot_path / f"topic_space_{file_suffix}.html")
         fig_doc_topics = self._topic_model.visualize_documents(titles, reduced_embeddings=reduced_embeddings,
                                                                hide_annotations=True, custom_labels=True, width=1800, height=1200)
-        fig_doc_topics.write_html(self._plot_path / "document_clusters.html")
+        fig_doc_topics.write_html(self._plot_path / f"document_clusters_{file_suffix}.html")
 
-        # topics_over_time = self._topic_model.topics_over_time(texts, years, nr_bins=20, datetime_format="%Y")
-        # fig_time = self._topic_model.visualize_topics_over_time(topics_over_time, top_n_topics=None, custom_labels=True,
-        #                                                         normalize_frequency=False, relative_frequency=True, width=1600, height=800)
-        # fig_time.write_html(self._plot_path / "topic_evolution.html")
+        topics_over_time = self._topic_model.topics_over_time(texts, years, nr_bins=20, datetime_format="%Y")
+        fig_time = self._topic_model.visualize_topics_over_time(topics_over_time, top_n_topics=None, custom_labels=True,
+                                                                normalize_frequency=True, relative_frequency=False, width=1600, height=800)
+        fig_time.write_html(self._plot_path / f"topic_evolution_{file_suffix}.html")
 
         # fig_hier = self._topic_model.visualize_hierarchy(top_n_topics=None, custom_labels=True)
         # fig_hier.write_html(self._plot_path / "topic_hierarchy.html")
@@ -292,4 +293,4 @@ class BERTopicExtractor(BaseTopicExtractor):
             l2_topics = kwargs["add_doc_classes"]
             fig = visualize_stacked_topics(self._topic_model, titles, reduced_embeddings=reduced_embeddings, hide_annotations=True, custom_labels=True, width=1800, height=1200,
                                            stacked_topics=l2_topics, stacked_symbols=[(0, "circle"), (1, "x")])
-            fig.write_html(self._plot_path / "topic_stacked.html")
+            fig.write_html(self._plot_path / f"topic_stacked_{file_suffix}.html")

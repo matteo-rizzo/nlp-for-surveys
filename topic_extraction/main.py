@@ -18,6 +18,7 @@ PASS_2 = True
 USE_PASS_1_EMBEDDINGS = True  # use embeddings from guided topic modeling from the first model
 ORTHOGONAL_SUBJECTS = True  # remove topics from the first model
 NORMALIZE_INPUT_EMBEDDINGS = False  # L2-normalization of sentence embeddings
+TEXT_COMPOSITION = ["t", "a", "k"]
 
 
 def list_paper_per_cluster(documents: list[Document], topics: list[int] | np.ndarray[int]) -> dict[int, list[str]]:
@@ -50,7 +51,7 @@ def get_word_relative_importance(words_topics: dict[int, list[tuple[str, float]]
     return words
 
 
-docs = document_extraction(add_abstract=True, add_keywords=True)
+docs = document_extraction(TEXT_COMPOSITION)
 
 # Pass 1
 
@@ -108,10 +109,12 @@ if PASS_2:
     # --------------------- PASS 2
     # Determine field of application
 
+    file_suffix = "".join(TEXT_COMPOSITION)
+
     pl_path2 = Path("plots") / "fields"
     pl_path2.mkdir(exist_ok=True, parents=True)
     ex2 = BERTopicExtractor(plot_path=pl_path2)
-    ex2.prepare(config_file="topic_extraction/config/bertopic2.yml")
+    ex2.prepare(config_file=f"topic_extraction/config/bertopic2_{file_suffix}.yml")
 
     if not (USE_PASS_1_EMBEDDINGS and PASS_1):
         # Compute embeddings from scratch
@@ -131,7 +134,7 @@ if PASS_2:
 
     grouped_papers = list_paper_per_cluster(docs, l2_topics)
 
-    ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True)
+    ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True, file_suffix=file_suffix)
     l2_topics_all_prob = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=l2_raw_probs, strategy="probabilities", threshold=.3)
     # l2_topics_all_dist = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, strategy="distributions", threshold=.3)
     # l2_topics_all = [p if p == d else -1 for p, d in zip(l2_topics_all_prob, l2_topics_all_dist)]
@@ -139,7 +142,7 @@ if PASS_2:
     print(f"Outliers with forced subjects: {len([t for t in l2_topics_all if t < 0])}")
 
     l2_words = get_word_relative_importance(l2_words_topics)
-    dump_yaml(l2_words, pl_path2 / "word_list.yml")
+    dump_yaml(l2_words, pl_path2 / f"word_list_{file_suffix}.yml")
 
     torch.cuda.empty_cache()
     # --------------------- END PASS 2
@@ -203,6 +206,7 @@ if PASS_2 and PASS_1:
                      subj_keywords=l2_words, theme_keywords=l1_words,
                      csv_path=pl_path1.parent / "results",
                      papers_by_subject=grouped_papers,
-                     agrifood_papers=None, theme_probs=l1_probs, subj_probs=l2_probs, write_ods=True)
+                     agrifood_papers=None, theme_probs=l1_probs, subj_probs=l2_probs, write_ods=True,
+                     file_suffix=file_suffix)
 
 # ex.see_topic_evolution(docs, bins_n=3)
