@@ -34,7 +34,7 @@ def list_paper_per_cluster(documents: list[Document], topics: list[int] | np.nda
     return grouped_docs
 
 
-def get_word_relative_importance(words_topics: dict[str, list[tuple[str, float]]]) -> dict[str, list[tuple[str, float]]]:
+def get_word_relative_importance(words_topics: dict[int, list[tuple[str, float]]]) -> dict[int, list[tuple[str, float]]]:
     """
     Weight the importance of representative keywords
 
@@ -203,6 +203,6 @@ if PASS_2 and PASS_1:
                      subj_keywords=l2_words, theme_keywords=l1_words,
                      csv_path=pl_path1.parent / "results",
                      papers_by_subject=grouped_papers,
-                     agrifood_papers=None, theme_probs=l1_probs, subj_probs=l2_probs)
+                     agrifood_papers=None, theme_probs=l1_probs, subj_probs=l2_probs, write_ods=True)
 
 # ex.see_topic_evolution(docs, bins_n=3)

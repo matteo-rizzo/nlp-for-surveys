@@ -11,13 +11,16 @@ from topic_extraction.classes.Document import Document
 from topic_extraction.link_from_id import get_scopus_link
 
 
-def expand_scores(keywords_dict: dict) -> dict:
+def expand_scores(keywords_dict: dict[int, list[tuple[str, float]]]) -> dict[int, list[str]]:
     """ Utility to pretty insert columns in dataframe """
-    words_score = {f"{k}_scores": [s for _, s in ws] for k, ws in keywords_dict.items()}
-    words_with_score = {
-        **{k: [w for w, _ in ws] for k, ws in keywords_dict.items()},
-        **words_score
-    }
+
+    words_with_score: dict[int, list[str]] = {k: [f"{w} ({s:.3f})" for w, s in ws] for k, ws in keywords_dict.items()}
+
+    # words_score = {f"{k}_scores": [s for _, s in ws] for k, ws in keywords_dict.items()}
+    # words_with_score = {
+    #     **{k: [w for w, _ in ws] for k, ws in keywords_dict.items()},
+    #     **words_score
+    # }
     return words_with_score
 
 
@@ -47,10 +50,11 @@ def dump_yaml(data, path: str | Path) -> None:
 
 def save_csv_results(docs: list[Document],
                      themes: list[int], subjects: list[int], alt_subjects: list[int] | None,
-                     theme_keywords: dict[str, list[tuple[str, float]]], subj_keywords: dict[str, list[tuple[str, float]]],
+                     theme_keywords: dict[int, list[tuple[str, float]]], subj_keywords: dict[int, list[tuple[str, float]]],
                      csv_path: str | Path,
                      papers_by_subject: dict[str, list[str]],
-                     agrifood_papers: list[int] = None, theme_probs: list[float] | None = None, subj_probs: list[float] | None = None) -> None:
+                     agrifood_papers: list[int] = None, theme_probs: list[float] | None = None, subj_probs: list[float] | None = None,
+                     write_ods: bool = True) -> None:
     """
     Save clustering results to CSV file
 
@@ -64,6 +68,7 @@ def save_csv_results(docs: list[Document],
     :param csv_path: the path where to write results
     :param subj_probs: confidence for cluster assignment of subjects
     :param theme_probs: confidence for cluster assignment with themes
+    :param write_ods: write all results in a single ODS sheet, or in three CSV files
     """
 
     csv_path.mkdir(exist_ok=True, parents=True)
@@ -73,8 +78,8 @@ def save_csv_results(docs: list[Document],
     assert theme_probs is None or len(theme_probs) == len(themes), f"Themes probabilities and assigned clusters have different sizes: {len(theme_probs)} - {len(themes)}"
     assert subj_probs is None or len(subj_probs) == len(subjects), f"Subjects probabilities and assigned clusters have different sizes: {len(subj_probs)} - {len(subjects)}"
 
-    pd.DataFrame(expand_scores(theme_keywords)).to_csv(csv_path / "themes.csv")
-    pd.DataFrame(expand_scores(subj_keywords)).to_csv(csv_path / "subjects.csv")
+    theme_df = pd.DataFrame(expand_scores(theme_keywords))
+    subjects_df = pd.DataFrame(expand_scores(subj_keywords))
 
     a_args = dict()
     if agrifood_papers:
@@ -82,14 +87,24 @@ def save_csv_results(docs: list[Document],
     if alt_subjects:
         a_args["alt_subjects"] = alt_subjects
     if theme_probs is not None:
-        a_args["themes_prob"] = theme_probs
+        a_args["themes_prob"] = [round(p, 3) for p in theme_probs]
     if subj_probs is not None:
-        a_args["subj_prob"] = subj_probs
+        a_args["subj_prob"] = [round(p, 3) for p in subj_probs]
 
     a_args["link"] = [get_scopus_link(s_id) for s_id in ids]
-    classification_df = pd.DataFrame(dict(themes=themes, subjects=subjects, **a_args), index=ids).sort_values(by=["subjects", "themes"])
+    classification_df = pd.DataFrame(dict(themes=themes, subjects=subjects, index=ids, **a_args)).sort_values(by=["subjects", "themes", "index"]).set_index("index")
 
-    classification_df.to_csv(csv_path / "classification.csv")
+    if write_ods:
+        # Write Sheet with three tabbed sheets
+        with pd.ExcelWriter(csv_path / "all_results.ods") as exc_writer:
+            classification_df.to_excel(exc_writer, sheet_name="classification", index=True)
+            theme_df.to_excel(exc_writer, sheet_name="themes", index=False)
+            subjects_df.to_excel(exc_writer, sheet_name="subjects", index=False)
+    else:
+        # Write three csv files
+        classification_df.to_csv(csv_path / "classification.csv", index=True)
+        theme_df.to_csv(csv_path / "themes.csv", index=False)
+        subjects_df.to_csv(csv_path / "subjects.csv", index=False)
 
 
 def vector_rejection(a: np.ndarray, b: np.ndarray) -> np.ndarray:

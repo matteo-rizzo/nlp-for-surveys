@@ -5,7 +5,7 @@ model:
   bertopic:
     min_topic_size: 15
     language: english
-    top_n_words: 10
+    top_n_words: 15
     nr_topics: auto
     calculate_probabilities: true
 
@@ -33,6 +33,7 @@ model:
         metric: euclidean
         #        algorithm: generic # comment to use default "best" one
         cluster_selection_method: eom # leaf # eom
+        cluster_selection_epsilon: 0.0
         prediction_data: true # do not change this
         gen_min_span_tree: true
       kmeans:

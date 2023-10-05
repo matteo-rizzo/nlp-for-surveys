@@ -13,3 +13,7 @@ bertopic
 matplotlib
 plotly
 scikit-learn
+pandas
+openpyxl
+odfpy
+
