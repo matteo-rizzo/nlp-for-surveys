@@ -96,7 +96,7 @@ def save_csv_results(docs: list[Document],
 
     if write_ods:
         # Write Sheet with three tabbed sheets
-        with pd.ExcelWriter(csv_path / "all_results.ods") as exc_writer:
+        with pd.ExcelWriter(csv_path / "all_results.ods", engine="odf") as exc_writer:
             classification_df.to_excel(exc_writer, sheet_name="classification", index=True)
             theme_df.to_excel(exc_writer, sheet_name="themes", index=False)
             subjects_df.to_excel(exc_writer, sheet_name="subjects", index=False)
