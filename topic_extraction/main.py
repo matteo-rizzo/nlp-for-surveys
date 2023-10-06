@@ -70,8 +70,8 @@ if PASS_1:
     # ]
 
     seed_topic_list = [
-        ["green", "sustainability", "environment", "transition", "transform", "business", "strategy", "model"],  # added strategy, model, automation
-        ["digitalization", "digital", "automation", "transition", "transform", "business", "strategy", "model"],
+        ["green", "sustainability", "environment", "recycling", "energy", "transition", "transform", "business", "strategy", "model"],  # added strategy, model, automation
+        ["digitalization", "digital", "technology", "transition", "transform", "business", "strategy", "model"],
     ]
 
     # --------------------- PASS 1
@@ -82,6 +82,11 @@ if PASS_1:
 
     if Path(ex1._embedding_save_path).is_file():
         embeddings = np.load(ex1._embedding_save_path)
+
+    # Documents representative of guided TM
+    # for i, d in enumerate(docs):
+    #     if i in [288, 586, 720, 726, 939, 1422, 1506, 1829, 1858]:  # [8, 169, 274, 481, 496, 557, 909, 1139, 1270, 1358, 1474, 1504, 1533, 1580]:
+    #         print(d.title)
 
     ex1.train(docs, embeddings=embeddings, normalize=NORMALIZE_INPUT_EMBEDDINGS)
 
@@ -125,7 +130,7 @@ if PASS_2:
 
     if ORTHOGONAL_SUBJECTS and PASS_1:
         # Project embeddings in other space to remove unwanted themes
-        embeddings = vector_rejection(embeddings, theme_embeddings[1:])
+        embeddings = vector_rejection(embeddings, theme_embeddings)
 
     ex2.train(docs, normalize=NORMALIZE_INPUT_EMBEDDINGS, embeddings=embeddings)
     print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")

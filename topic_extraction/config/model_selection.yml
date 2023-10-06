@@ -1,7 +1,7 @@
 dimensionality_reduction:
   umap:
     n_neighbors: [ 10, 20, 30 ]
-    #    n_components: [ 5, 10 ]
+    n_components: [ 5, 10 ]
 #    min_dist: [ 0.0, 0.1, 0.3 ]
 #    metric: [ cosine, euclidean ]
 
@@ -10,8 +10,8 @@ clustering:
     k_start: 3
     k_end: 50
   hdbscan:
-    min_cluster_size: [ 15, 20, 30, 40 ]
-    min_samples: [ 10, 15, 20, 30, 40 ]
+    min_cluster_size: [ 15, 20, 30 ]
+    min_samples: [ 15, 20, 30 ]
     #    metric: [ euclidean, manhattan, infinity ]
     cluster_selection_method: [ eom, leaf ]
     cluster_selection_epsilon: [ 0.0, 0.5 ]

@@ -61,7 +61,7 @@ model:
         random_state: 17
         top_n_words: 15
       mmr:
-        diversity: 0.1
+        diversity: 0.3
         top_n_words: 15
       pos:
         model: en_core_web_lg

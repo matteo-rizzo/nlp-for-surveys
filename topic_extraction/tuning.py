@@ -23,6 +23,7 @@ import datetime as dt
 USE_PASS_1_EMBEDDINGS = True  # use embeddings from guided topic modeling from the first model
 ORTHOGONAL_SUBJECTS = True  # remove topics from the first model
 EMB_PATH = "dumps/embeddings/allenai-specter.npy"
+TEXT_COMPOSITION = ["t", "a", "k"]
 
 
 def get_all_combination_indices(params: dict[str, list]) -> list[tuple]:
@@ -49,15 +50,16 @@ def tuning(normalize: bool, gs_config: Path | str):
         the config file should have one entry for each "choice". If only 1 possibility is present, then it should have parameters
         directly with no entry name for a module.
     """
-    docs = document_extraction(add_abstract=True, add_keywords=True)
+    docs = document_extraction(TEXT_COMPOSITION)
 
-    suffix: str = dt.datetime.now().strftime("%Y%m%d_%H%M%S") + ("" if not normalize else "_norm")
+    text_type_suffix = "_" + "".join(TEXT_COMPOSITION)
+    suffix: str = dt.datetime.now().strftime("%Y%m%d_%H%M%S") + ("" if not normalize else "_norm") + text_type_suffix
 
     pl_path = Path("plots") / "validation"
     result_path = "gs_results_" + suffix
 
     grid_search_params = load_yaml(gs_config)
-    base_params = load_yaml("topic_extraction/config/bertopic2.yml")
+    base_params = load_yaml(f"topic_extraction/config/bertopic2{text_type_suffix}.yml")
     base_model_params = deepcopy(base_params["model"])
     tunable_parameters: list[str] = list(set(base_model_params.keys()) & set(grid_search_params.keys()))
 
@@ -80,7 +82,7 @@ def tuning(normalize: bool, gs_config: Path | str):
         for index_combination in param_k_combination_indices:
             # index_combination is a tuple of indexes, 1 for each argument of block k
             combination_values: tuple = tuple(argument_values[i_comb] for argument_values, i_comb in zip(block_k_argument_values, index_combination))
-            # Kwargs for a combination of arguments of block k
+            # Kwargs for a combination of the arguments of block k
             grid_search_combined_kv_args = dict(zip(block_k_argument_names, combination_values))
             block_parameters[k].append(grid_search_combined_kv_args)
 
@@ -106,7 +108,7 @@ def tuning(normalize: bool, gs_config: Path | str):
 
     if ORTHOGONAL_SUBJECTS:
         theme_embeddings = np.load("dumps/embeddings/theme_embeddings.npy")
-        embeddings = vector_rejection(embeddings, theme_embeddings[1:])
+        embeddings = vector_rejection(embeddings, theme_embeddings)
 
     embeddings_c = copy.deepcopy(embeddings)
 

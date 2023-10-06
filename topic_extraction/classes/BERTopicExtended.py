@@ -7,11 +7,13 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from bertopic import BERTopic
+from bertopic._bertopic import TopicMapper
 from bertopic._utils import check_is_fitted, check_documents_type, check_embeddings_shape
 from bertopic.backend._utils import select_backend
 from bertopic.cluster import BaseCluster
 from bertopic.cluster._utils import is_supported_hdbscan, hdbscan_delegator
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.mixture import GaussianMixture
 
 from topic_extraction.visualization.plotly_utils import visualize_topics_over_time_ext
 
@@ -296,3 +298,61 @@ class BERTopicExtended(BERTopic):
             probabilities = self._map_probabilities(probabilities, original_topics=True)
             predictions = self._map_predictions(predictions)
         return predictions, probabilities
+
+    def _cluster_embeddings(self,
+                            umap_embeddings: np.ndarray,
+                            documents: pd.DataFrame,
+                            partial_fit: bool = False,
+                            y: np.ndarray = None) -> tuple[pd.DataFrame, np.ndarray]:
+        """ Cluster UMAP embeddings with HDBSCAN
+
+        Arguments:
+            umap_embeddings: The reduced sentence embeddings with UMAP
+            documents: Dataframe with documents and their corresponding IDs
+            partial_fit: Whether to run `partial_fit` for online learning
+
+        Returns:
+            documents: Updated dataframe with documents and their corresponding IDs
+                       and newly added Topics
+            probabilities: The distribution of probabilities
+        """
+        if partial_fit:
+            self.hdbscan_model = self.hdbscan_model.partial_fit(umap_embeddings)
+            labels = self.hdbscan_model.labels_
+            documents['Topic'] = labels
+            self.topics_ = labels
+        else:
+            try:
+                self.hdbscan_model.fit(umap_embeddings, y=y)
+            except TypeError:
+                self.hdbscan_model.fit(umap_embeddings)
+
+            # ******************************** Add support for GMM
+            if isinstance(self.hdbscan_model, GaussianMixture):
+                labels = self.hdbscan_model.predict(umap_embeddings)
+            # ******************************** END addition
+            else:
+                try:
+                    labels = self.hdbscan_model.labels_
+                except AttributeError:
+                    labels = y
+            documents['Topic'] = labels
+            self._update_topic_size(documents)
+
+        # Some algorithms have outlier labels (-1) that can be tricky to work
+        # with if you are slicing data based on that labels. Therefore, we
+        # track if there are outlier labels and act accordingly when slicing.
+        self._outliers = 1 if -1 in set(labels) else 0
+
+        # Extract probabilities
+        probabilities = None
+        if hasattr(self.hdbscan_model, "probabilities_"):
+            probabilities = self.hdbscan_model.probabilities_
+
+            if self.calculate_probabilities and is_supported_hdbscan(self.hdbscan_model):
+                probabilities = hdbscan_delegator(self.hdbscan_model, "all_points_membership_vectors")
+
+        if not partial_fit:
+            self.topic_mapper_ = TopicMapper(self.topics_)
+        logger.info("Clustered reduced embeddings")
+        return documents, probabilities
