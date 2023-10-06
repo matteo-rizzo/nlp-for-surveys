@@ -16,7 +16,7 @@ model:
     choice: umap
     params:
       umap:
-        n_neighbors: 20
+        n_neighbors: 10
         n_components: 10
         min_dist: 0.0
         metric: cosine
@@ -27,7 +27,7 @@ model:
     choice: hdbscan
     params:
       hdbscan:
-        min_cluster_size: 20
+        min_cluster_size: 15
         #        max_cluster_size: 15
         min_samples: 15
         metric: euclidean
