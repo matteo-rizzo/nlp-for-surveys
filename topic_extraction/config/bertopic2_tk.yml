@@ -16,7 +16,7 @@ model:
     choice: umap
     params:
       umap:
-        n_neighbors: 20
+        n_neighbors: 10
         n_components: 10
         min_dist: 0.0
         metric: cosine
