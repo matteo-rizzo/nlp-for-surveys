@@ -282,8 +282,8 @@ class BERTopicExtractor(BaseTopicExtractor):
                                                                 normalize_frequency=True, relative_frequency=False, width=1600, height=800)
         fig_time.write_html(self._plot_path / f"topic_evolution_{file_suffix}.html")
 
-        # fig_hier = self._topic_model.visualize_hierarchy(top_n_topics=None, custom_labels=True)
-        # fig_hier.write_html(self._plot_path / "topic_hierarchy.html")
+        fig_hier = self._topic_model.visualize_hierarchy(top_n_topics=None, custom_labels=True)
+        fig_hier.write_html(self._plot_path / f"topic_hierarchy_{file_suffix}.html")
 
         # topics_per_class = self._topic_model.topics_per_class(texts, classes=GROUND_TRUTH)
         # fig_class = self._topic_model.visualize_topics_per_class(custom_labels=True)
