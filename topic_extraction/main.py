@@ -60,19 +60,9 @@ theme_embeddings = None
 l1_topics = None
 if PASS_1:
     # seed_topic_list = [
-    #     ["circular economy", "sustainability", "sustainable business", "sustainable development", "recycling", "waste", "green transition", "green transform"],
-    #     ["digitalization", "digital business", "digital economy", "digital innovation", "business transformation"]
+    #     ["green", "sustainability", "environment", "recycling", "energy", "transition", "transform", "business", "strategy", "model"],  # added strategy, model, automation
+    #     ["digitalization", "digital", "technology", "transition", "transform", "business", "strategy", "model"],
     # ]
-
-    # seed_topic_list1 = [
-    #     ["green", "sustainability", "environment", "green transition", "green transform", "sustainable transformation", "sustainable business"],
-    #     ["digitalization", "digital", "digital transition", "digital transformation", "e-business", "digital business", "automation"],
-    # ]
-
-    seed_topic_list = [
-        ["green", "sustainability", "environment", "recycling", "energy", "transition", "transform", "business", "strategy", "model"],  # added strategy, model, automation
-        ["digitalization", "digital", "technology", "transition", "transform", "business", "strategy", "model"],
-    ]
 
     # SEED documents (notes)
     # 0 [8, 169, 274, 481, 496, 557, 909, 1139, 1270, 1358, 1474, 1504, 1533, 1580]
@@ -81,11 +71,14 @@ if PASS_1:
     # 1 [288, 586, 720, 726, 939, 1422, 1506, 1829, 1858]
     # ['85119652020', '85120786316', '85101084432', '85096444313', '85070896886', '85087158749', '85042455591', '84857671100', '79957520956']
 
+    supervised_labels: pd.Series = pd.read_csv("data/supervised_sample.csv", index_col="index", dtype={"index": str})["0"]
+    y = [supervised_labels[doc.id] if doc.id in supervised_labels.index else -1 for doc in docs]
+
     # --------------------- PASS 1
     pl_path1 = Path("plots") / "themes"
     pl_path1.mkdir(exist_ok=True, parents=True)
     ex1 = BERTopicExtractor(plot_path=pl_path1)
-    ex1.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=seed_topic_list)
+    ex1.prepare(config_file="topic_extraction/config/bertopic1.yml", seed_topic_list=None)
 
     if Path(ex1._embedding_save_path).is_file():
         embeddings = np.load(ex1._embedding_save_path)
@@ -95,7 +88,7 @@ if PASS_1:
     #     if i in [288, 586, 720, 726, 939, 1422, 1506, 1829, 1858]:  # [8, 169, 274, 481, 496, 557, 909, 1139, 1270, 1358, 1474, 1504, 1533, 1580]:
     #         print(d.title)
 
-    ex1.train(docs, embeddings=embeddings, normalize=NORMALIZE_INPUT_EMBEDDINGS)
+    ex1.train(docs, embeddings=embeddings, normalize=NORMALIZE_INPUT_EMBEDDINGS, y=y)
 
     l1_topics, l1_probs, _, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
     torch.cuda.empty_cache()

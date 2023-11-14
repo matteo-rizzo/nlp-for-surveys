@@ -6,9 +6,12 @@ dimensionality_reduction:
 #    metric: [ cosine, euclidean ]
 
 clustering:
-  kmeans:
-    k_start: 3
-    k_end: 50
+  gmm:
+    #    n_components: [ 2, 3 ]
+    #    n_init: [ 1, 2, 3 ]
+    max_iter: [ 100, 300 ]
+    init_params: [ kmeans, k-means++ ]
+    covariance_type: [ full, spherical, diag, tied ]
   hdbscan:
     min_cluster_size: [ 15, 20, 30 ]
     min_samples: [ 15, 20, 30 ]

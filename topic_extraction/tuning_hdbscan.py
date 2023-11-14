@@ -138,7 +138,7 @@ def tuning(normalize: bool, gs_config: Path | str):
         n_outliers: int = len([t for t in topics if t < 0])
 
         # Score prioritize results with a good ratio between n_cluster and outliers, and have a good DBCV score
-        score = (bdcv_score + (n_clusters / (math.log2(n_outliers + 1) + 1))) / 2
+        score = (bdcv_score + (math.log2(n_clusters) / (math.log2(n_outliers + 1) + 1))) / 2
         # Flatten arguments to fit them in dataframe, and remove parameters that were not tuned
         flattened_args: dict[str, dict] = {f"{block_name}_{strategy_name}": strategy_config for block_name, block_conf in last_tested_arguments.items()
                                            for strategy_name, strategy_config in block_conf.items()}
