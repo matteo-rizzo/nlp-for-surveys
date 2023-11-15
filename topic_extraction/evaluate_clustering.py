@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
-TARGET_FILE = "plots/results/shared_results/title_abstract_keywords/all_results_tak.ods"
-# TARGET_FILE = "plots/results/all_results_tak.ods"
+# TARGET_FILE = "plots/results/shared_results/title_abstract_keywords/all_results_tak.ods"
+TARGET_FILE = "plots/results/all_results_tak.ods"
 BENCHMARK_FILE = "data/DIG and GREEN papers.xlsx"
 
 
@@ -67,30 +67,30 @@ if __name__ == "__main__":
     df_target: pd.DataFrame = pd.read_csv("data/benchmark_data_raw.csv", usecols=["index", "digital", "green"], index_col="index",
                                           dtype={"index": str, "digital": float, "green": float})
     df_target.fillna(.0, inplace=True)
-    # df_target["digital"] = df_target.apply(lambda row: 1 if row.digital > 10 else 0, axis=1).astype(int)
-    # df_target["green"] = df_target.apply(lambda row: 1 if row.green > 10 else 0, axis=1).astype(int)
+    df_target["digital"] = df_target.apply(lambda row: 1 if row.digital > 10 else 0, axis=1).astype(int)
+    df_target["green"] = df_target.apply(lambda row: 1 if row.green > 10 else 0, axis=1).astype(int)
     # df_target = df_target.rename(columns={"digital": "1", "green": "0"}).sort_index(axis="columns")
-    # # df_target = df_target / 100.0
-    # df_pred: pd.DataFrame = pd.read_csv("plots/l1_probs_results_hdbscan.csv", index_col="index", usecols=["index", "0", "1"], dtype={"index": str, "0": float, "1": float})
-    # df_pred = df_pred.loc[df_pred.index.intersection(df_target.index), :].sort_index(ascending=True)
-    # df_target = df_target.sort_index(ascending=True)
-    # df_pred = (df_pred > 0.3).astype(int)
-    # assert set(df_pred.index.tolist()) == set(df_target.index.tolist()), "Indexes differ!"
-    # compute_metrics(y_pred=df_pred.to_numpy(), y_true=df_target.to_numpy(), sk_classifier_name="HDBSCAN results")
+    # df_target = df_target / 100.0
+    df_pred: pd.DataFrame = pd.read_csv("plots/l1_probs_results_hdbscan.csv", index_col="index", usecols=["index", "0", "1"], dtype={"index": str, "0": float, "1": float})
+    df_pred = df_pred.loc[df_pred.index.intersection(df_target.index), :].sort_index(ascending=True)
+    df_target = df_target.sort_index(ascending=True)
+    df_pred = (df_pred > 0.3).astype(int)
+    assert set(df_pred.index.tolist()) == set(df_target.index.tolist()), "Indexes differ!"
+    compute_metrics(y_pred=df_pred.to_numpy(), y_true=df_target.to_numpy(), sk_classifier_name="HDBSCAN results")
 
     # df_target = df_target.rename(columns={"digital": "green", "green": "digital"}).sort_index(axis="columns")
-    df_target["label"] = df_target.apply(lambda row: 0 if row.digital >= 60 else -1, axis=1)
-    df_target["label"] = df_target.apply(lambda row: 1 if row.green >= 60 else row.label, axis=1)
-    df_target["label"] = df_target.apply(lambda row: -1 if row.green < 60 and row.digital < 60 else row.label, axis=1)
-    df_target["label"] = df_target["label"].astype(int)
-    df_target = df_target["label"]
-    df_target = df_target[(df_target >= 0) & (df_target <= 1)]
-    df_target.name = "target"
-
-    df_pred: pd.Series = pd.read_excel(TARGET_FILE, sheet_name="classification", index_col="index", usecols=["index", "themes"], dtype={"index": str, "themes": int})["themes"]
-    df_pred.name = "prediction"
-    df_pred = df_pred[(df_pred >= 0) & (df_pred <= 1)]
-
-    all_data = pd.concat([df_pred, df_target], join="inner", axis=1, verify_integrity=True)
-
-    compute_metrics(all_data["prediction"].tolist(), all_data["target"].tolist(), "Clustering KMeans")
+    # df_target["label"] = df_target.apply(lambda row: 0 if row.digital >= 60 else -1, axis=1)
+    # df_target["label"] = df_target.apply(lambda row: 1 if row.green >= 60 else row.label, axis=1)
+    # df_target["label"] = df_target.apply(lambda row: -1 if row.green < 60 and row.digital < 60 else row.label, axis=1)
+    # df_target["label"] = df_target["label"].astype(int)
+    # df_target = df_target["label"]
+    # df_target = df_target[(df_target >= 0) & (df_target <= 1)]
+    # df_target.name = "target"
+    #
+    # df_pred: pd.Series = pd.read_excel(TARGET_FILE, sheet_name="classification", index_col="index", usecols=["index", "themes"], dtype={"index": str, "themes": int})["themes"]
+    # df_pred.name = "prediction"
+    # df_pred = df_pred[(df_pred >= 0) & (df_pred <= 1)]
+    #
+    # all_data = pd.concat([df_pred, df_target], join="inner", axis=1, verify_integrity=True)
+    #
+    # compute_metrics(all_data["prediction"].tolist(), all_data["target"].tolist(), "Clustering KMeans")

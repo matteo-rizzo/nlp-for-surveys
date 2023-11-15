@@ -1,6 +1,6 @@
 dimensionality_reduction:
   umap:
-    n_neighbors: [ 10, 20, 30 ]
+    n_neighbors: [ 10, 20, 30, 50, 60 ]
     n_components: [ 5, 10 ]
 #    min_dist: [ 0.0, 0.1, 0.3 ]
 #    metric: [ cosine, euclidean ]
@@ -13,8 +13,8 @@ clustering:
     init_params: [ kmeans, k-means++ ]
     covariance_type: [ full, spherical, diag, tied ]
   hdbscan:
-    min_cluster_size: [ 15, 20, 30 ]
-    min_samples: [ 15, 20, 30 ]
+    min_cluster_size: [ 20, 30, 40, 50 ]
+    min_samples: [ 15, 20, 30, 40 ]
     #    metric: [ euclidean, manhattan, infinity ]
     cluster_selection_method: [ eom, leaf ]
     cluster_selection_epsilon: [ 0.0, 0.5 ]

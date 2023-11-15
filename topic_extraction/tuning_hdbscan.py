@@ -167,4 +167,4 @@ def tuning(normalize: bool, gs_config: Path | str):
 
 
 if __name__ == "__main__":
-    tuning(normalize=False, gs_config="topic_extraction/config/model_selection.yml")
+    tuning(normalize=False, gs_config="topic_extraction/config/model_selection_2.yml")
