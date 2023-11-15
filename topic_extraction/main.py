@@ -73,6 +73,7 @@ if PASS_1:
 
     supervised_labels: pd.Series = pd.read_csv("data/supervised_sample.csv", index_col="index", dtype={"index": str})["0"]
     y = [supervised_labels[doc.id] if doc.id in supervised_labels.index else -1 for doc in docs]
+    # y = None
 
     # --------------------- PASS 1
     pl_path1 = Path("plots") / "themes"
@@ -90,9 +91,15 @@ if PASS_1:
 
     ex1.train(docs, embeddings=embeddings, normalize=NORMALIZE_INPUT_EMBEDDINGS, y=y)
 
-    l1_topics, l1_probs, _, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
+    l1_topics, l1_probs, l1_raw_probs, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
+    l1_topics = ex1._topic_model.reduce_outliers([d.body for d in docs], l1_topics, probabilities=l1_raw_probs, strategy="probabilities", threshold=.3)
+
+    # Save probabilities for testing
+    multilabel_probs = pd.DataFrame(l1_raw_probs, index=[d.id for d in docs])
+    multilabel_probs.to_csv("plots/l1_probs_results_hdbscan.csv", index_label="index")
+
     torch.cuda.empty_cache()
-    theme_embeddings = ex1._topic_model.topic_embeddings_
+    theme_embeddings = ex1._topic_model.topic_embeddings_[1:]
     embeddings = ex1._train_embeddings
 
     # Save them for usage in tuning-routine

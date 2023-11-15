@@ -174,7 +174,7 @@ class BERTopicExtended(BERTopic):
             documents = self._sort_mappings_by_frequency(documents)
 
         # Extract topics by calculating c-TF-IDF
-        self._extract_topics(documents)
+        self._extract_topics(documents, embeddings=embeddings)
 
         # Reduce topics
         if self.nr_topics:
