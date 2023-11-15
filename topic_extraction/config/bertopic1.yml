@@ -38,7 +38,9 @@ model:
         n_clusters: 2
       gmm:
         n_components: 2
-        init_params: k-means++
+        covariance_type: spherical
+        init_params: kmeans
+        max_iter: 300
         random_state: 47
 
   vectorizer:
