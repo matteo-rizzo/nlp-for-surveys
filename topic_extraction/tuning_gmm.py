@@ -52,7 +52,7 @@ def tuning(normalize: bool, gs_config: Path | str) -> None:
     suffix: str = dt.datetime.now().strftime("%Y%m%d_%H%M%S") + ("" if not normalize else "_norm") + text_type_suffix
 
     pl_path = Path("plots") / "validation"
-    result_path = "gs_results_GMM_" + suffix
+    result_path = "gs_results_NEW_TUNER_" + suffix
 
     grid_search_params = load_yaml(gs_config)
     base_params = load_yaml(f"topic_extraction/config/bertopic1.yml")
@@ -136,15 +136,19 @@ def tuning(normalize: bool, gs_config: Path | str) -> None:
             ch_score = calinski_harabasz_score(embeddings, topics)
             da_score = davies_bouldin_score(embeddings, topics)
             n_clusters = max(topics) + 1
+            bdcv_score = extractor._topic_model.hdbscan_model.relative_validity_
+            n_outliers: int = len([t for t in topics if t < 0])
 
             # Score prioritize results with a good ratio between n_cluster and outliers, and have a good DBCV score
-            score = silhouette
+            # score = silhouette
+            score = bdcv_score - math.log2(abs(n_clusters - 2) + 1) - math.log2(n_outliers + 1)
             # Flatten arguments to fit them in dataframe, and remove parameters that were not tuned
             flattened_args: dict[str, dict] = {f"{block_name}_{strategy_name}": strategy_config for block_name, block_conf in last_tested_arguments.items()
                                                for strategy_name, strategy_config in block_conf.items()}
-            ext_args = {**flattened_args, "n_clusters": n_clusters, "silhouette_score": score,
+            ext_args = {**flattened_args, "n_clusters": n_clusters, "silhouette_score": silhouette, "score": score,
                         "calinski_harabasz_score": ch_score,
-                        "davies_bouldin_score": da_score}
+                        "davies_bouldin_score": da_score,
+                        "bdcv_score": bdcv_score}
             # if we got a better score, store it and the parameters
             if score > best_score:
                 best_score = score
@@ -154,7 +158,7 @@ def tuning(normalize: bool, gs_config: Path | str) -> None:
 
             torch.cuda.empty_cache()
 
-            pd.DataFrame.from_records(all_results).sort_values(by="silhouette_score", ascending=False).to_csv(pl_path / f"{result_path}.csv", index=False)
+            pd.DataFrame.from_records(all_results).sort_values(by="score", ascending=False).to_csv(pl_path / f"{result_path}.csv", index=False)
 
     print("Best score: {:.4f}".format(best_score))
     print("Best parameters: {}".format(best_parameters))
@@ -169,4 +173,4 @@ def tuning(normalize: bool, gs_config: Path | str) -> None:
 
 
 if __name__ == "__main__":
-    tuning(normalize=False, gs_config="topic_extraction/config/model_selection.yml")
+    tuning(normalize=False, gs_config="topic_extraction/config/model_selection_1.yml")

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import re
+from pprint import pprint
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 TARGET_FILE = "plots/results/shared_results/title_abstract_keywords/all_results_tak.ods"
+# TARGET_FILE = "plots/results/all_results_tak.ods"
 BENCHMARK_FILE = "data/DIG and GREEN papers.xlsx"
 
 
@@ -22,8 +24,21 @@ def extract_id(a: pd.Series):
 
 
 def compute_metrics(y_pred: np.ndarray, y_true: np.ndarray, sk_classifier_name: str = None) -> dict:
-    precision, recall, f1_score, _ = precision_recall_fscore_support(y_true, y_pred, average="binary", pos_label=0)
+    precision, recall, f1_score, _ = precision_recall_fscore_support(y_true, y_pred, average="macro", pos_label=1)
     acc = accuracy_score(y_true, y_pred)
+
+    # Find metrics per combination
+    # y_pred_df = pd.DataFrame(y_pred)
+    # y_true_df = pd.DataFrame(y_true)
+    # y_pred_df["cats"] = y_pred_df.iloc[:, 0].astype(str).str.cat(y_pred_df.iloc[:, 1].astype(str), sep="")
+    # y_true_df["cats"] = y_true_df.iloc[:, 0].astype(str).str.cat(y_true_df.iloc[:, 1].astype(str), sep="")
+    # y_pred_df = y_pred_df[y_pred_df["cats"] == "00"]["cats"]
+    # y_pred_df.name = "pred"
+    # y_true_df = y_true_df[y_true_df["cats"] == "00"]["cats"]
+    # y_true_df.name = "target"
+    # d = pd.concat([y_true_df, y_pred_df], axis=1, join="outer").fillna("11")
+    # pprint(precision_recall_fscore_support(d["target"], d["pred"], average="binary", pos_label="00"))
+
     if sk_classifier_name:
         print(f"{sk_classifier_name} accuracy: {acc:.3f}")
         print(f"{sk_classifier_name} precision: {precision:.3f}")
@@ -49,14 +64,32 @@ def extract_supervised_sample():
 
 
 if __name__ == "__main__":
-    df_target: dict[str, pd.DataFrame] = pd.read_excel(BENCHMARK_FILE, sheet_name=None, header=None, names=["link"])
+    df_target: pd.DataFrame = pd.read_csv("data/benchmark_data_raw.csv", usecols=["index", "digital", "green"], index_col="index",
+                                          dtype={"index": str, "digital": float, "green": float})
+    df_target.fillna(.0, inplace=True)
+    # df_target["digital"] = df_target.apply(lambda row: 1 if row.digital > 10 else 0, axis=1).astype(int)
+    # df_target["green"] = df_target.apply(lambda row: 1 if row.green > 10 else 0, axis=1).astype(int)
+    # df_target = df_target.rename(columns={"digital": "1", "green": "0"}).sort_index(axis="columns")
+    # # df_target = df_target / 100.0
+    # df_pred: pd.DataFrame = pd.read_csv("plots/l1_probs_results_hdbscan.csv", index_col="index", usecols=["index", "0", "1"], dtype={"index": str, "0": float, "1": float})
+    # df_pred = df_pred.loc[df_pred.index.intersection(df_target.index), :].sort_index(ascending=True)
+    # df_target = df_target.sort_index(ascending=True)
+    # df_pred = (df_pred > 0.3).astype(int)
+    # assert set(df_pred.index.tolist()) == set(df_target.index.tolist()), "Indexes differ!"
+    # compute_metrics(y_pred=df_pred.to_numpy(), y_true=df_target.to_numpy(), sk_classifier_name="HDBSCAN results")
 
-    # TODO: implement, depending on format
-    df_pred: pd.Series = None
-    df_pred.name = "prediction"
-
-    df_target: pd.Series = pd.Series(dict([a for b in (list(zip(extract_id(df["link"]), [i] * df.shape[0])) for i, df in enumerate(df_target.values())) for a in b]))
+    # df_target = df_target.rename(columns={"digital": "green", "green": "digital"}).sort_index(axis="columns")
+    df_target["label"] = df_target.apply(lambda row: 0 if row.digital >= 60 else -1, axis=1)
+    df_target["label"] = df_target.apply(lambda row: 1 if row.green >= 60 else row.label, axis=1)
+    df_target["label"] = df_target.apply(lambda row: -1 if row.green < 60 and row.digital < 60 else row.label, axis=1)
+    df_target["label"] = df_target["label"].astype(int)
+    df_target = df_target["label"]
+    df_target = df_target[(df_target >= 0) & (df_target <= 1)]
     df_target.name = "target"
+
+    df_pred: pd.Series = pd.read_excel(TARGET_FILE, sheet_name="classification", index_col="index", usecols=["index", "themes"], dtype={"index": str, "themes": int})["themes"]
+    df_pred.name = "prediction"
+    df_pred = df_pred[(df_pred >= 0) & (df_pred <= 1)]
 
     all_data = pd.concat([df_pred, df_target], join="inner", axis=1, verify_integrity=True)
 
