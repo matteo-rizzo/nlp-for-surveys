@@ -308,9 +308,9 @@ class BERTopicExtractor(BaseTopicExtractor):
         fig_hier = self._topic_model.visualize_hierarchy(top_n_topics=None, custom_labels=True)
         fig_hier.write_html(self._plot_path / f"topic_hierarchy_{file_suffix}.html")
 
-        # topics_per_class = self._topic_model.topics_per_class(texts, classes=GROUND_TRUTH)
-        # fig_class = self._topic_model.visualize_topics_per_class(custom_labels=True)
-        # fig_class.write_html(self._plot_path / "topic_hierarchy.html")
+        topics_per_class = self._topic_model.topics_per_class(texts, classes=kwargs.get("l1_classes"))
+        fig_class = self._topic_model.visualize_topics_per_class(topics_per_class, top_n_topics=None, custom_labels=True, width=1800, height=1200, normalize_frequency=True)
+        fig_class.write_html(self._plot_path / f"theme_per_subject_{file_suffix}.html")
 
         if kwargs.get("add_doc_classes", None):
             l2_topics = kwargs["add_doc_classes"]

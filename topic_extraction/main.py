@@ -148,7 +148,8 @@ if PASS_2:
 
     grouped_papers = list_paper_per_cluster(docs, l2_topics)
 
-    ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True, file_suffix=file_suffix)
+    classes = [f"theme_{k}" for k in l1_topics]
+    ex2.plot_wonders(docs, add_doc_classes=l1_topics, use_training_embeddings=True, file_suffix=file_suffix, l1_classes=classes)
     l2_topics_all_prob = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, probabilities=l2_raw_probs, strategy="probabilities", threshold=.3)
     # l2_topics_all_dist = ex2._topic_model.reduce_outliers([d.body for d in docs], l2_topics, strategy="distributions", threshold=.3)
     # l2_topics_all = [p if p == d else -1 for p, d in zip(l2_topics_all_prob, l2_topics_all_dist)]
