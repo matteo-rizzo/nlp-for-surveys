@@ -53,7 +53,7 @@ def save_csv_results(docs: list[Document],
                      theme_keywords: dict[int, list[tuple[str, float]]], subj_keywords: dict[int, list[tuple[str, float]]],
                      csv_path: str | Path,
                      papers_by_subject: dict[str, list[str]] = None,
-                     agrifood_papers: list[int] = None, theme_probs: list[float] | None = None, subj_probs: list[float] | None = None,
+                     agrifood_papers: list[int] = None, theme_probs: np.ndarray | None = None, subj_probs: list[float] | None = None,
                      write_ods: bool = True, file_suffix: str | None = None) -> None:
     """
     Save clustering results to CSV file
@@ -88,7 +88,8 @@ def save_csv_results(docs: list[Document],
     if alt_subjects:
         a_args["alt_subjects"] = alt_subjects
     if theme_probs is not None:
-        a_args["themes_prob"] = [round(p, 3) for p in theme_probs]
+        for a in range(theme_probs.shape[1]):
+            a_args[f"theme_{a}_prob"] = theme_probs[:, a].round(3)
     if subj_probs is not None:
         a_args["subj_prob"] = [round(p, 3) for p in subj_probs]
 

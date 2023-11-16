@@ -41,6 +41,14 @@ def get_topic_probabilities(probabilities: np.ndarray[float], predictions: np.nd
 
     # Get probability of the most matching topic
     best_probabilities = probabilities[:, predictions].diagonal()  # (N,)
+
+    # Alternative way
+    # higher_value = list()
+    # for i in range(probabilities.shape[0]):
+    #     prob = probabilities[i, predictions[i]]
+    #     higher_value.append(float(prob))
+    # best_probabilities = np.array(higher_value)
+
     return best_probabilities
 
 
@@ -174,17 +182,32 @@ class BERTopicExtractor(BaseTopicExtractor):
         print("*** Fitting the model ***")
 
         # Topic modelling
-        # topics, probs = \
-        return self._topic_model.fit(texts, embeddings=embeddings, fit_reduction=fit_reduction, y=y)
-        # Further reduce topics
-        # self._topic_model.reduce_topics(texts, nr_topics=3)
+        topics, probs = self._topic_model.fit(texts, embeddings=embeddings, fit_reduction=fit_reduction, y=y)
+
+        # Do topic update here to avoid using batch_extract that uses probability approximation
+        print(f"Outliers: {len([t for t in topics if t < 0])}")
+
+        if kwargs.get("reduce_outliers", False):
+            print("*** Reducing outliers ***")
+            thr = kwargs.get("threshold", .0)
+            topics = self._topic_model.reduce_outliers(texts, topics, probabilities=probs, strategy="probabilities", threshold=thr)
+            self._topic_model.update_topics(texts, topics=topics,
+                                            vectorizer_model=self._vectorizer_model,
+                                            ctfidf_model=self._weighting_model,
+                                            representation_model=self._representation_model,
+                                            top_n_words=self._topic_model.top_n_words)
+            print(f"Outliers post-reduction: {len([t for t in topics if t < 0])}")
+
+        topic_probs = get_topic_probabilities(probs, np.asarray(topics))
+
+        return topics, topic_probs, probs, self._topic_model.get_topics()
 
     def extract(self, document: Document, k: int, *args, **kwargs) -> list:
         pass
 
     def batch_extract(self, documents: list[Document], k: int, *args, **kwargs) -> tuple:
         """
-        Compute topic clusters for each document
+        Compute topic clusters for each document. DO NOT USE THIS
         
         :param documents: document to label
         :param k: ignored

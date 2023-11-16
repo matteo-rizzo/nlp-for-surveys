@@ -44,6 +44,7 @@ def compute_metrics(y_pred: np.ndarray, y_true: np.ndarray, sk_classifier_name: 
         print(f"{sk_classifier_name} precision: {precision:.3f}")
         print(f"{sk_classifier_name} recall: {recall:.3f}")
         print(f"{sk_classifier_name} F1-score: {f1_score:.3f}")
+        print(f"{sk_classifier_name} FLAT accuracy: {accuracy_score(y_true.reshape(-1), y_pred.reshape(-1)):.3f}")
 
     return {"f1": f1_score, "accuracy": acc, "precision": precision, "recall": recall}
 
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     assert set(df_pred.index.tolist()) == set(df_target.index.tolist()), "Indexes differ!"
     compute_metrics(y_pred=df_pred.to_numpy(), y_true=df_target.to_numpy(), sk_classifier_name="HDBSCAN results")
 
-    # df_target = df_target.rename(columns={"digital": "green", "green": "digital"}).sort_index(axis="columns")
+    # # df_target = df_target.rename(columns={"digital": "green", "green": "digital"}).sort_index(axis="columns")
     # df_target["label"] = df_target.apply(lambda row: 0 if row.digital >= 60 else -1, axis=1)
     # df_target["label"] = df_target.apply(lambda row: 1 if row.green >= 60 else row.label, axis=1)
     # df_target["label"] = df_target.apply(lambda row: -1 if row.green < 60 and row.digital < 60 else row.label, axis=1)

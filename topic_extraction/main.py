@@ -89,10 +89,12 @@ if PASS_1:
     #     if i in [288, 586, 720, 726, 939, 1422, 1506, 1829, 1858]:  # [8, 169, 274, 481, 496, 557, 909, 1139, 1270, 1358, 1474, 1504, 1533, 1580]:
     #         print(d.title)
 
-    ex1.train(docs, embeddings=embeddings, normalize=NORMALIZE_INPUT_EMBEDDINGS, y=y)
+    l1_topics, l1_probs, l1_raw_probs, l1_words_topics = ex1.train(docs, embeddings=embeddings, normalize=NORMALIZE_INPUT_EMBEDDINGS, y=y)
 
-    l1_topics, l1_probs, l1_raw_probs, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
+    # l1_topics, l1_probs, l1_raw_probs, l1_words_topics = ex1.batch_extract(docs, -1, use_training_embeddings=True)
+    print(f"L1 outliers pre-reduction: {len([t for t in l1_topics if t < 0])}")
     l1_topics = ex1._topic_model.reduce_outliers([d.body for d in docs], l1_topics, probabilities=l1_raw_probs, strategy="probabilities", threshold=.3)
+    print(f"L1 outliers post-reduction: {len([t for t in l1_topics if t < 0])}")
 
     # Save probabilities for testing
     multilabel_probs = pd.DataFrame(l1_raw_probs, index=[d.id for d in docs])
@@ -139,9 +141,9 @@ if PASS_2:
         # Project embeddings in other space to remove unwanted themes
         embeddings = vector_rejection(embeddings, theme_embeddings)
 
-    ex2.train(docs, normalize=NORMALIZE_INPUT_EMBEDDINGS, embeddings=embeddings)
+    l2_topics, l2_probs, l2_raw_probs, l2_words_topics = ex2.train(docs, normalize=NORMALIZE_INPUT_EMBEDDINGS, embeddings=embeddings, reduce_outliers=True, threshold=.5)
     print(f"DBCV: {ex2._topic_model.hdbscan_model.relative_validity_}")
-    l2_topics, l2_probs, l2_raw_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
+    # l2_topics, l2_probs, l2_raw_probs, l2_words_topics = ex2.batch_extract(docs, -1, use_training_embeddings=True, reduce_outliers=True, threshold=.5)
     print(f"Found {max(l2_topics) + 1} subjects.")
 
     grouped_papers = list_paper_per_cluster(docs, l2_topics)
@@ -218,7 +220,7 @@ if PASS_2 and PASS_1:
                      subj_keywords=l2_words, theme_keywords=l1_words,
                      csv_path=pl_path1.parent / "results",
                      papers_by_subject=grouped_papers,
-                     agrifood_papers=None, theme_probs=l1_probs, subj_probs=l2_probs, write_ods=True,
+                     agrifood_papers=None, theme_probs=l1_raw_probs, subj_probs=l2_probs, write_ods=True,
                      file_suffix=file_suffix)
 
 # ex.see_topic_evolution(docs, bins_n=3)
