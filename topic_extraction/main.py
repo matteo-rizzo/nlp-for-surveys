@@ -8,7 +8,7 @@ import torch.cuda
 from topic_extraction.classes.BERTopicExtractor import BERTopicExtractor
 from topic_extraction.classes.Document import Document
 from topic_extraction.extraction import document_extraction
-from topic_extraction.utils import dump_yaml, save_csv_results, vector_rejection
+from topic_extraction.utils import dump_yaml, save_csv_results, vector_rejection, validate_coherence
 
 pd.set_option("display.max_columns", None)
 
@@ -160,6 +160,9 @@ if PASS_2:
     dump_yaml(l2_words, pl_path2 / f"word_list_{file_suffix}.yml")
 
     torch.cuda.empty_cache()
+
+    validate_coherence(ex2._topic_model, docs)
+
     # --------------------- END PASS 2
 
 # --------------------- PASS 3

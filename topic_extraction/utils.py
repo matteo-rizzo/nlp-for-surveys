@@ -6,6 +6,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import yaml
+from gensim import corpora
+from gensim.models import CoherenceModel
 
 from topic_extraction.classes.Document import Document
 from topic_extraction.link_from_id import get_scopus_link
@@ -125,3 +127,40 @@ def vector_rejection(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     # Subtract projection onto the unwanted direction
     rejected_a = a - ((np.dot(a, b) / np.dot(b, b)).reshape(-1, 1) * b.reshape(1, -1))
     return rejected_a
+
+
+def validate_coherence(topic_model, docs: list[Document]):
+    # Preprocess documents
+    texts = [d.body for d in docs]
+    cleaned_docs = topic_model._preprocess_text(texts)
+
+    # Extract vectorizer and analyzer from BERTopic
+    vectorizer = topic_model.vectorizer_model
+    analyzer = vectorizer.build_analyzer()
+
+    # Extract features for Topic Coherence evaluation
+    # words = vectorizer.get_feature_names_out()
+    tokens = [analyzer(doc) for doc in cleaned_docs]
+    dictionary = corpora.Dictionary(tokens)
+    corpus = [dictionary.doc2bow(token) for token in tokens]
+    topics = topic_model.get_topics()
+    topics.pop(-1, None)
+    topic_words = [[words for words, _ in topic_model.get_topic(topic)] for topic in range(len(set(topics)) - 1)]
+
+    # Evaluate
+    coherence_model_cv = CoherenceModel(topics=topic_words,
+                                        texts=tokens,
+                                        corpus=corpus,
+                                        dictionary=dictionary,
+                                        coherence="c_v")
+
+    coherence_model_umass = CoherenceModel(topics=topic_words,
+                                           texts=tokens,
+                                           corpus=corpus,
+                                           dictionary=dictionary,
+                                           coherence="u_mass")
+
+    cv = coherence_model_cv.get_coherence()
+    umass = coherence_model_umass.get_coherence()
+
+    print(cv, umass)
