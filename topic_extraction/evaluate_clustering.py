@@ -64,6 +64,27 @@ def extract_supervised_sample():
     additional_truth.to_csv("data/supervised_sample.csv", index_label="index")
 
 
+def evaluate_twin_papers():
+    df_target: pd.DataFrame = pd.read_csv("data/benchmark_data_raw.csv", usecols=["index", "digital", "green"], index_col="index",
+                                          dtype={"index": str, "digital": float, "green": float})
+    df_target.fillna(.0, inplace=True)
+    df_target["digital"] = df_target.apply(lambda row: 1 if row.digital > 30 else 0, axis=1).astype(bool)
+    df_target["green"] = df_target.apply(lambda row: 1 if row.green > 30 else 0, axis=1).astype(bool)
+    df_target["twin"] = df_target["digital"] & df_target["green"]
+    # df_target = df_target.rename(columns={"digital": "1", "green": "0"}).sort_index(axis="columns")
+    # df_target = df_target / 100.0
+    # df_pred: pd.DataFrame = pd.read_csv("plots/l1_probs_results_hdbscan.csv", index_col="index", usecols=["index", "0", "1"], dtype={"index": str, "0": float, "1": float})
+    with pd.ExcelFile("plots/results/shared_results_2/tak_4/all_results_tak.ods", engine="odf") as exc_file:
+        df_pred: pd.DataFrame = pd.read_excel(exc_file, sheet_name="classification", index_col="index", usecols=["index", "theme_0_prob", "theme_1_prob"],
+                                              dtype={"index": str, "theme_0_prob": float, "theme_1_prob": float})
+
+    df_pred = df_pred.loc[df_pred.index.intersection(df_target.index), :].sort_index(ascending=True)
+    df_target = df_target.sort_index(ascending=True)
+    df_pred = (df_pred > 0.3).astype(int)
+    assert set(df_pred.index.tolist()) == set(df_target.index.tolist()), "Indexes differ!"
+    compute_metrics(y_pred=df_pred.to_numpy(), y_true=df_target.to_numpy(), sk_classifier_name="HDBSCAN results")
+
+
 if __name__ == "__main__":
     df_target: pd.DataFrame = pd.read_csv("data/benchmark_data_raw.csv", usecols=["index", "digital", "green"], index_col="index",
                                           dtype={"index": str, "digital": float, "green": float})
