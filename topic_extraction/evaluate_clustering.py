@@ -24,7 +24,7 @@ def extract_id(a: pd.Series):
 
 
 def compute_metrics(y_pred: np.ndarray, y_true: np.ndarray, sk_classifier_name: str = None) -> dict:
-    precision, recall, f1_score, _ = precision_recall_fscore_support(y_true, y_pred, average="macro", pos_label=1)
+    precision, recall, f1_score, _ = precision_recall_fscore_support(y_true, y_pred, average="binary", pos_label=1)
     acc = accuracy_score(y_true, y_pred)
 
     # Find metrics per combination
@@ -64,28 +64,34 @@ def extract_supervised_sample():
     additional_truth.to_csv("data/supervised_sample.csv", index_label="index")
 
 
-def evaluate_twin_papers():
+def evaluate_twin_papers(thr: float = .3):
     df_target: pd.DataFrame = pd.read_csv("data/benchmark_data_raw.csv", usecols=["index", "digital", "green"], index_col="index",
                                           dtype={"index": str, "digital": float, "green": float})
     df_target.fillna(.0, inplace=True)
-    df_target["digital"] = df_target.apply(lambda row: 1 if row.digital > 30 else 0, axis=1).astype(bool)
-    df_target["green"] = df_target.apply(lambda row: 1 if row.green > 30 else 0, axis=1).astype(bool)
-    df_target["twin"] = df_target["digital"] & df_target["green"]
+    df_target["digital"] = df_target.apply(lambda row: 1 if row.digital >= 20 else 0, axis=1).astype(bool)
+    df_target["green"] = df_target.apply(lambda row: 1 if row.green >= 20 else 0, axis=1).astype(bool)
+    df_target["twin"] = (df_target["digital"] & df_target["green"]).astype(int)
     # df_target = df_target.rename(columns={"digital": "1", "green": "0"}).sort_index(axis="columns")
     # df_target = df_target / 100.0
     # df_pred: pd.DataFrame = pd.read_csv("plots/l1_probs_results_hdbscan.csv", index_col="index", usecols=["index", "0", "1"], dtype={"index": str, "0": float, "1": float})
-    with pd.ExcelFile("plots/results/shared_results_2/tak_4/all_results_tak.ods", engine="odf") as exc_file:
+    with pd.ExcelFile("plots/third_results/tak_4/all_results_tak.xlsx") as exc_file:
         df_pred: pd.DataFrame = pd.read_excel(exc_file, sheet_name="classification", index_col="index", usecols=["index", "theme_0_prob", "theme_1_prob"],
                                               dtype={"index": str, "theme_0_prob": float, "theme_1_prob": float})
 
     df_pred = df_pred.loc[df_pred.index.intersection(df_target.index), :].sort_index(ascending=True)
     df_target = df_target.sort_index(ascending=True)
-    df_pred = (df_pred > 0.3).astype(int)
+    df_pred = (df_pred >= thr).astype(bool)
+    df_pred["twin"] = (df_pred["theme_0_prob"] & df_pred["theme_1_prob"]).astype(int)
     assert set(df_pred.index.tolist()) == set(df_target.index.tolist()), "Indexes differ!"
-    compute_metrics(y_pred=df_pred.to_numpy(), y_true=df_target.to_numpy(), sk_classifier_name="HDBSCAN results")
+    print(np.count_nonzero(df_pred["twin"].to_numpy()))
+    print(np.count_nonzero(df_target["twin"].to_numpy()))
+    compute_metrics(y_pred=df_pred["twin"].to_numpy(), y_true=df_target["twin"].to_numpy(), sk_classifier_name="HDBSCAN results")
 
 
 if __name__ == "__main__":
+    evaluate_twin_papers(.38)
+    exit(0)
+
     df_target: pd.DataFrame = pd.read_csv("data/benchmark_data_raw.csv", usecols=["index", "digital", "green"], index_col="index",
                                           dtype={"index": str, "digital": float, "green": float})
     df_target.fillna(.0, inplace=True)
