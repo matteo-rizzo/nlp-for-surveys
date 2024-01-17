@@ -23,6 +23,9 @@ if __name__ == "__main__":
         metadata["year"].append(d.timestamp)
         metadata["keywords"].append("; ".join(d.keywords) if d.keywords else "")
         metadata["title"].append(d.title)
+        metadata["abstract"].append(d.abstract)
+        metadata["source title"].append(d.source)
+        metadata["document type"].append(d.doc_type)
 
     df_meta = pd.DataFrame(metadata, index=pd.Index([d.id for d in docs], dtype=str, name="index"))
 

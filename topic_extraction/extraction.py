@@ -70,13 +70,18 @@ def document_extraction(text_body: list[str], clean: bool = True) -> list[Docume
         text_order.append(j)
     text_body = text_order
 
-    df = pd.read_csv("data/TwinTransitionEstrazione7mar2023.csv", usecols=["Title", "Abstract", "Year", "Author Keywords", "EID", "Link", "Authors"])
+    df = pd.read_csv("data/TwinTransitionEstrazione7mar2023.csv",
+                     usecols=["Title", "Abstract", "Year", "Author Keywords", "EID", "Link", "Authors", "Source title", "Document Type"])
 
     keywords: list[list[str]] = [[c.strip() for c in s.split(";")] for s in df["Author Keywords"].fillna("").tolist()]
     years: list[int] = [y for y in df["Year"].astype(int).tolist()]
     ids: list[str] = extract_scopus_id_from_link(df[["EID", "Link"]].fillna(""))  # [extract_scopus_id(s) for s in df[["EID", "Link"]].fillna("").tolist()]
     authors: list[str] = df["Authors"].tolist()
     assert None not in ids, "There were None values in Scopus ids"
+
+    source_titles = df["Source title"].tolist()
+    document_types = df["Document Type"].tolist()
+    abstracts = df["Abstract"].tolist()
 
     df["all"] = df[text_body[0]]
     for t in text_body[1:]:
@@ -90,7 +95,8 @@ def document_extraction(text_body: list[str], clean: bool = True) -> list[Docume
     if clean:
         texts = [re.sub(" +", " ", re.sub(r"[^A-Za-z\s.;]+", "", t)) for t in texts]
 
-    docs = [Document(i, b, t, k, y, auths) for i, b, t, y, k, auths in zip(ids, texts, df["Title"].tolist(), years, keywords, authors)]
+    docs = [Document(i, b, t, k, y, auths, abst, s_title, doctype) for i, b, t, y, k, auths, abst, s_title, doctype in
+            zip(ids, texts, df["Title"].tolist(), years, keywords, authors, abstracts, source_titles, document_types)]
     return docs
 
 
