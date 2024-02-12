@@ -3,7 +3,7 @@ import pandas as pd
 from topic_extraction.extraction import document_extraction
 
 if __name__ == "__main__":
-    ds: pd.Series = pd.read_csv("data/_out_.csv", usecols=["index", "alt_subjects"], index_col="index", dtype={"index": str})["alt_subjects"]
+    ds: pd.Series = pd.read_csv("data/_out_.csv", usecols=["index", "subjects"], index_col="index", dtype={"index": str})["subjects"]
 
     docs = document_extraction(["t", "a", "k"])
 
